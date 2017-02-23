@@ -25,6 +25,7 @@
 table {
     border-collapse: collapse;
     white-space: pre-wrap;
+    width: 100%;
 }
 .no-results {
     text-align: center;
