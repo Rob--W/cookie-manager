@@ -7,5 +7,9 @@
         "cookies",
         "*://*/*"
     ],
+    "options_ui": {
+        "page": "cookie-manager.html",
+        "open_in_tab": true
+    },
     "options_page": "cookie-manager.html"
 }
