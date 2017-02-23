@@ -1,0 +1,11 @@
+{
+    "name": "Cookie Manager",
+    "description": "An efficient cookie manager. View, delete and search for cookies. Designed for privacy and security aware users.",
+    "version": "1",
+    "manifest_version": 2,
+    "permissions": [
+        "cookies",
+        "*://*/*"
+    ],
+    "options_page": "cookie-manager.html"
+}

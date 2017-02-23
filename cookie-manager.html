@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Cookie Manager</title>
+<link rel="stylesheet" type="text/css" href="cookie-manager.css">
+</head>
+<body>
+<form id="searchform">
+    <input type="text" id=".url" placeholder="url" title="Restricts the retrieved cookies to those that would match the given URL.">
+    <input type="text" id=".name" placeholder="name" title="Filters the cookies by name.">
+    <input type="text" id=".value" placeholder="value" title="Filters the cookies by value.">
+    <input type="text" id=".domain" placeholder="domain" title="Restricts the retrieved cookies to those whose domains match or are subdomains of this one.">
+    <input type="text" id=".path" placeholder="path" title="Restricts the retrieved cookies to those whose path exactly matches this string.">
+    <div class="flex-grid">
+        <select id=".secure" title="Filters the cookies by their Secure property.">
+            <option value="" selected>Secure = any</option>
+            <option value="true">Secure = yes</option>
+            <option value="false">Secure = no</option>
+        </select>
+        <select id=".hostOnly" title="Filters the cookies by their hostOnly property.">
+            <option value="" selected>hostOnly = any</option>
+            <option value="true">hostOnly = yes</option>
+            <option value="false">hostOnly = no</option>
+        </select>
+        <select id=".httpOnly" title="Filters the cookies by their httpOnly property.">
+            <option value="" selected>httpOnly = any</option>
+            <option value="true">httpOnly = yes</option>
+            <option value="false">httpOnly = no</option>
+        </select>
+        <select id=".session">
+            <option value="" selected>Session = any</option>
+            <option value="true">Show session cookies only</option>
+            <option value="false">Show non-session cookies only</option>
+        </select>
+        <input type="date" id=".expiry.min" title="Minimal expiry date">
+        <input type="date" id=".expiry.max" title="Maximal expiry date">
+    </div>
+    <div class="flex-grid">
+        <select id=".storeId">
+        <!--
+        Note: These values are not documented, but it appears that these values are hard-coded in
+        http://src.chromium.org/viewvc/chrome/trunk/src/chrome/browser/extensions/api/cookies/cookies_helpers.cc?revision=242464#l42
+        -->
+        <option value="">Any cookie store</option>
+        <option value="0" selected>Main cookie store</option>
+        <option value="1">Incognito cookie store</option>
+    </select>
+    <input type="submit" value="Search">
+</div>
+</form>
+
+<div>
+<table id="result">
+    <thead>
+        <tr>
+            <th><input type="button" id="clickAll" value="Remove" hidden></th>
+            <th>Name</th>
+            <th>Value</th>
+            <th>Domain</th>
+            <th>Path</th>
+            <th>Flags</th>
+            <th>Expiry date</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td colspan="7" class="no-results">
+Use the form to compose a search query.
+Wildcards (*) are supported for every field.
+Blank fields are ignored in the query.
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+<script src="cookie-manager.js"></script>
+</body>
+</html>
