@@ -337,6 +337,7 @@ function renderCookie(cookiesOut, cookie) {
     if (cookie.hostOnly) extraInfo.push('hostOnly');
     if (cookie.httpOnly) extraInfo.push('httpOnly');
     if (cookie.storeId === '1') extraInfo.push('incognito');
+    else if (cookie.storeId === 'firefox-private') extraInfo.push('private');
     extraInfo = extraInfo.join(', ');
     row.insertCell(5).textContent = extraInfo;
 
