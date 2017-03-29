@@ -109,7 +109,6 @@ function doSearch() {
         'domain',
         'path',
         'secure',
-        'hostOnly',
         'httpOnly',
         'session',
         'storeId',
@@ -147,10 +146,6 @@ function doSearch() {
     // Filter by httpOnly. The chrome.cookies API somehow does not support filtering by httpOnly...
     var httpOnly = query.httpOnly;
     delete query.httpOnly;
-
-    // Filter by httpOnly. The chrome.cookies API does not support a hostOnly filter either.
-    var hostOnly = query.hostOnly;
-    delete query.hostOnly;
 
     if (query.storeId !== ANY_COOKIE_STORE_ID) {
         useCookieStoreIds(query, [query.storeId]);
@@ -217,7 +212,6 @@ function doSearch() {
         var filterKeys = Object.keys(filters);
         cookies = cookies.filter(function(cookie) {
             if (httpOnly !== undefined && cookie.httpOnly !== httpOnly ||
-                hostOnly !== undefined && cookie.hostOnly !== hostOnly ||
                 !cookie.session && (
                     !isNaN(expiryMinFilter) && cookie.expirationDate < expiryMinFilter ||
                     !isNaN(expiryMaxFilter) && cookie.expirationDate > expiryMaxFilter)) {
@@ -334,7 +328,6 @@ function renderCookie(cookiesOut, cookie) {
     var extraInfo = [];
     // Not sure if host-only should be added
     if (cookie.secure) extraInfo.push('secure');
-    if (cookie.hostOnly) extraInfo.push('hostOnly');
     if (cookie.httpOnly) extraInfo.push('httpOnly');
     if (cookie.storeId === '1') extraInfo.push('incognito');
     else if (cookie.storeId === 'firefox-private') extraInfo.push('private');
