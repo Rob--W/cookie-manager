@@ -13,6 +13,7 @@
 }
 .flex-grid > * {
     flex: 1;
+    min-width: 5ch;
     padding: 0.5em;
     border: 1px solid #CCC;
 }
