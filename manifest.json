@@ -1,6 +1,6 @@
 {
     "name": "Cookie Manager",
-    "description": "An efficient cookie manager. View, delete and search for cookies. Designed for privacy and security aware users.",
+    "description": "An efficient cookie manager. View, delete and search for cookies. Designed for privacy and security aware users. Enable this extension to open the cookie manager, disable it if you are done.",
     "version": "1",
     "manifest_version": 2,
     "permissions": [
@@ -10,6 +10,9 @@
     "options_ui": {
         "page": "cookie-manager.html",
         "open_in_tab": true
+    },
+    "background": {
+        "scripts": ["background.js"]
     },
     "applications": {
         "gecko": {
