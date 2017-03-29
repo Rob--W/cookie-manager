@@ -10,5 +10,10 @@
     "options_ui": {
         "page": "cookie-manager.html",
         "open_in_tab": true
+    },
+    "applications": {
+        "gecko": {
+            "id": "cookie-manager@robwu.nl"
+        }
     }
 }
