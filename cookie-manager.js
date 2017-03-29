@@ -4,16 +4,20 @@
 /* jshint browser: true */
 'use strict';
 
+var ANY_COOKIE_STORE_ID = '(# of any cookie jar)';
+
 document.getElementById('searchform').onsubmit = function(e) {
     e.preventDefault();
     doSearch();
 };
 document.getElementById('.storeId').onchange = function() {
     var storeIdInput = this;
-    if (storeIdInput.value === '0') {
+    if (storeIdInput.value !== '1') {
         // Extensions always have access to non-incognito sessions.
         return;
     }
+    // If store ID is '1', then we are using Chrome and incognito
+    // access is required.
     chrome.extension.isAllowedIncognitoAccess(function(isAllowedAccess) {
         if (isAllowedAccess) {
             // Got access, no problem!
@@ -48,14 +52,25 @@ document.getElementById('clickAll').onclick = function() {
     this.value = actionIsRemoveCookie ? 'Restore' : 'Remove';
 };
 
-chrome.cookies.getAllCookieStores(function(cookieStores) {
-    var cookieJarDropdown = document.getElementById('.storeId');
-    cookieJarDropdown.appendChild(new Option('Any cookie jar', ''));
-    // TODO: Do something with cookieStores[*].tabIds ?
-    cookieStores.forEach(function(cookieStore) {
-        cookieJarDropdown.appendChild(new Option(storeIdToHumanName(cookieStore.id), cookieStore.id));
+updateCookieStoreIds();
+window.addEventListener('focus', updateCookieStoreIds);
+
+function updateCookieStoreIds() {
+    chrome.cookies.getAllCookieStores(function(cookieStores) {
+        var cookieJarDropdown = document.getElementById('.storeId');
+        var selectedValue = cookieJarDropdown.value;
+        cookieJarDropdown.textContent = '';
+        cookieJarDropdown.appendChild(new Option('Any cookie jar', ANY_COOKIE_STORE_ID));
+        // TODO: Do something with cookieStores[*].tabIds ?
+        cookieStores.forEach(function(cookieStore) {
+            cookieJarDropdown.appendChild(new Option(storeIdToHumanName(cookieStore.id), cookieStore.id));
+        });
+        cookieJarDropdown.value = selectedValue;
+        if (cookieJarDropdown.selectedIndex === -1) {
+            cookieJarDropdown.value = ANY_COOKIE_STORE_ID;
+        }
     });
-});
+}
 
 function storeIdToHumanName(storeId) {
     // Chrome
@@ -137,7 +152,7 @@ function doSearch() {
     var hostOnly = query.hostOnly;
     delete query.hostOnly;
 
-    if (query.storeId) {
+    if (query.storeId !== ANY_COOKIE_STORE_ID) {
         useCookieStoreIds(query, [query.storeId]);
     } else {
         chrome.cookies.getAllCookieStores(function(cookieStores) {
