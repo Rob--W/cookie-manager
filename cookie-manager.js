@@ -10,30 +10,30 @@ document.getElementById('searchform').onsubmit = function(e) {
     e.preventDefault();
     doSearch();
 };
-document.getElementById('.storeId').onchange = function() {
-    var storeIdInput = this;
-    if (storeIdInput.value !== '1') {
-        // Extensions always have access to non-incognito sessions.
-        return;
+
+chrome.extension.isAllowedIncognitoAccess(function(isAllowedAccess) {
+    if (!isAllowedAccess) {
+        var introContainer = document.querySelector('.no-results');
+        introContainer.insertAdjacentHTML(
+            'beforeend',
+            '<br>To see incognito cookies, visit <a class="ext-settings"></a>' +
+            ' and enable "Allow in incognito".');
+        var a = introContainer.querySelector('.ext-settings');
+        a.href = 'chrome://extensions/?id=' + chrome.runtime.id;
+        a.textContent = a.href;
+        a.onclick = function(e) {
+            if (e.shiftKey) {
+                chrome.windows.create({
+                    url: a.href,
+                });
+            } else {
+                chrome.tabs.create({
+                    url: a.href,
+                });
+            }
+        };
     }
-    // If store ID is '1', then we are using Chrome and incognito
-    // access is required.
-    chrome.extension.isAllowedIncognitoAccess(function(isAllowedAccess) {
-        if (isAllowedAccess) {
-            // Got access, no problem!
-            return;
-        }
-        if (window.confirm('To access the incognito cookies, you need to select ' +
-                '"Allow in incognito" at the Extension settings.\n\n' +
-                'Do you want to open the extension settings?')) {
-            chrome.tabs.create({
-                url: 'chrome://extensions/?id=' + chrome.runtime.id
-            });
-        } else {
-            storeIdInput.value = '0';
-        }
-    });
-};
+});
 document.getElementById('.session').onchange = function() {
     // Expiry is only meaningful for non-session cookies
     document.getElementById('.expiry.min').disabled = 
