@@ -38,6 +38,9 @@ tbody tr {
 tbody tr:hover {
     outline: 1px solid orange;
 }
+th:nth-child(1) /* buttons */ {
+    text-align: left;
+}
 td:nth-child(2) /* name */,
 td:nth-child(3) /* value */,
 td:nth-child(4) /* domain */,
