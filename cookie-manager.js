@@ -1,4 +1,6 @@
 /* globals chrome, alert */
+/* globals Promise */
+/* globals console */
 /* jshint browser: true */
 'use strict';
 
@@ -45,6 +47,42 @@ document.getElementById('clickAll').onclick = function() {
     }
     this.value = actionIsRemoveCookie ? 'Restore' : 'Remove';
 };
+
+chrome.cookies.getAllCookieStores(function(cookieStores) {
+    var cookieJarDropdown = document.getElementById('.storeId');
+    cookieJarDropdown.appendChild(new Option('Any cookie jar', ''));
+    // TODO: Do something with cookieStores[*].tabIds ?
+    cookieStores.forEach(function(cookieStore) {
+        cookieJarDropdown.appendChild(new Option(storeIdToHumanName(cookieStore.id), cookieStore.id));
+    });
+});
+
+function storeIdToHumanName(storeId) {
+    // Chrome
+    // These values are not documented, but they appear to be hard-coded in
+    // https://chromium.googlesource.com/chromium/src/+/3c7170a0bed4bf8cc9b0a95f5066100bec0f15bb/chrome/browser/extensions/api/cookies/cookies_helpers.cc#43
+    if (storeId === '0') {
+        return 'Cookie jar: Default';
+    }
+    if (storeId === '1') {
+        return 'Cookie jar: Incognito';
+    }
+
+    // Firefox
+    // Not documented either, but also hardcoded in
+    // http://searchfox.org/mozilla-central/rev/7419b368156a6efa24777b21b0e5706be89a9c2f/toolkit/components/extensions/ext-cookies.js#15
+    if (storeId === 'firefox-default') {
+        return 'Cookie jar: Default';
+    }
+    if (storeId === 'firefox-private') {
+        return 'Cookie jar: Private browsing';
+    }
+    var tmp = /^firefox-container-(.*)$/.exec(storeId);
+    if (tmp) {
+        return 'Cookie jar: Container ' + tmp[1];
+    }
+    return 'Cookie jar: ID ' + storeId;
+}
 
 function doSearch() {
     // Filters for cookie:
@@ -100,21 +138,52 @@ function doSearch() {
     delete query.hostOnly;
 
     if (query.storeId) {
-        chrome.cookies.getAll(query, renderAllCookies);
+        useCookieStoreIds(query, [query.storeId]);
     } else {
-        query.storeId = '1';
-        chrome.cookies.getAll(query, function(incognitoCookies) {
-            if (incognitoCookies) {
-                query.storeId = '0';
-                chrome.cookies.getAll(query, function(cookies) {
-                    if (cookies) {
-                        cookies = cookies.concat(incognitoCookies);
+        chrome.cookies.getAllCookieStores(function(cookieStores) {
+            var cookieStoreIds = cookieStores.map(function(cookieStore) {
+                return cookieStore.id;
+            });
+            useCookieStoreIds(query, cookieStoreIds);
+        });
+    }
+
+    /**
+     * Fetches all cookies matching `query` from the cookie stores listed in `storeIds`,
+     * and renders the result.
+     *
+     * @param {object} query
+     * @param {string[]} cookieStoreIds List of CookieStore IDs for which cookies should be shown.
+     */
+    function useCookieStoreIds(query, cookieStoreIds) {
+        var errors = [];
+        var cookiePromises = cookieStoreIds.map(function(storeId) {
+            return new Promise(function(resolve) {
+                var queryWithId = Object.assign({}, query);
+                queryWithId.storeId = storeId;
+                chrome.cookies.getAll(queryWithId, function(cookies) {
+                    var error = chrome.runtime.lastError && chrome.runtime.lastError.message;
+                    if (error) {
+                        // This should never happen.
+                        // This might happen if the browser profile was closed while the user tries to
+                        // access cookies in its cookie store.
+                        console.error('Cannot retrieve cookies: ' + error);
+                        errors.push('Failed to fetch cookies from cookie store ' + storeId + ': ' + error);
                     }
-                    renderAllCookies(cookies);
+                    resolve(cookies || []);
                 });
-            } else {
-                renderAllCookies(null);
-            }
+            });
+        });
+        Promise.all(cookiePromises).then(function(allCookies) {
+            // Flatten [[...a], [...b], ...] to [...a, ...b, ...]
+            allCookies = allCookies.reduce(function(a, b) {
+                return a.concat(b);
+            }, []);
+            renderAllCookies(allCookies, errors);
+        }, function(error) {
+            var allCookies = [];
+            var errors = ['Failed to fetch cookies: ' + error];
+            renderAllCookies(allCookies, errors);
         });
     }
 
@@ -155,23 +224,20 @@ function doSearch() {
         });
         return cookies;
     }
-    function renderAllCookies(cookies) {
-        if (cookies) cookies = processAllCookies(cookies);
+    function renderAllCookies(cookies, errors) {
+        cookies = processAllCookies(cookies);
 
         var cookiesOut = document.createElement('tbody');
-        var hasNoCookies = !cookies || cookies.length === 0;
+        var hasNoCookies = cookies.length === 0;
 
         if (hasNoCookies) {
             var cell = cookiesOut.insertRow().insertCell();
             cell.colSpan = 7;
-            if (cookies) {
+            if (errors.length === 0) {
                 cell.textContent = 'No cookies found.';
             } else {
-                cell.textContent = 'Error: ' + chrome.runtime.lastError.message;
-                if (chrome.runtime.lastError.message.indexOf('cookie store id') > 0) {
-                    cell.textContent = 'Error: Cannot read incognito cookies because the ' +
-                        'extension has no access to the incognito session.';
-                }
+                cell.style.whiteSpace = 'pre-wrap';
+                cell.textContent = errors.join('\n');
             }
             cell.className = 'no-results';
         } else {
