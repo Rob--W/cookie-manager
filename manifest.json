@@ -14,6 +14,7 @@
     "background": {
         "scripts": ["background.js"]
     },
+    "page_action": {},
     "applications": {
         "gecko": {
             "id": "cookie-manager@robwu.nl"
