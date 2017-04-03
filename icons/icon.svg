@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="96"
+   height="96"
+   viewBox="0 0 25.399999 25.400001"
+   version="1.1"
+   id="svg8"
+   inkscape:version="0.92.1 r"
+   sodipodi:docname="icon.svg">
+  <defs
+     id="defs2" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="7.9195959"
+     inkscape:cx="42.523636"
+     inkscape:cy="44.540279"
+     inkscape:document-units="mm"
+     inkscape:current-layer="g6525"
+     showgrid="false"
+     units="px"
+     inkscape:window-width="1920"
+     inkscape:window-height="1025"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:groupmode="layer"
+     id="layer3"
+     inkscape:label="dark background"
+     style="display:none">
+    <rect
+       style="opacity:0.86000001;fill:#000000;fill-opacity:1;stroke:none;stroke-width:2.64583325;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect6477"
+       width="25.390606"
+       height="25.524239"
+       x="0"
+       y="-0.057422545"
+       ry="0.88134557" />
+  </g>
+  <g
+     style="display:inline"
+     transform="translate(0,-271.59998)"
+     id="g6525"
+     inkscape:groupmode="layer"
+     inkscape:label="Layer 1 shadow">
+    <flowRoot
+       transform="matrix(0.3115551,0.17987641,-0.17987641,0.3115551,2.1937426,272.35181)"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15px;line-height:125%;font-family:Ubuntu;-inkscape-font-specification:Sans;letter-spacing:0px;word-spacing:0px;fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:5.88366916;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
+       id="flowRoot6519"
+       xml:space="preserve"><flowRegion
+         id="flowRegion6515"
+         style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-opacity:1;stroke-width:5.88366916;stroke-miterlimit:4;stroke-dasharray:none"><rect
+           y="18.470793"
+           x="6.1871843"
+           height="72.983521"
+           width="72.478447"
+           id="rect6513"
+           style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-opacity:1;stroke-width:5.88366916;stroke-miterlimit:4;stroke-dasharray:none" /></flowRegion><flowPara
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:66.66666412px;font-family:'URW Gothic';-inkscape-font-specification:'URW Gothic';fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-opacity:1;stroke-width:5.88366916;stroke-miterlimit:4;stroke-dasharray:none"
+         id="flowPara6517">C</flowPara></flowRoot>    <text
+       id="text6523"
+       y="290.51807"
+       x="7.137537"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:5.39629316px;line-height:125%;font-family:Ubuntu;-inkscape-font-specification:Sans;letter-spacing:0px;word-spacing:0px;fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:2.11666667;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
+       xml:space="preserve"><tspan
+         style="font-size:9.59340858px;stroke-width:2.11666667;fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
+         y="290.51807"
+         x="7.137537"
+         id="tspan6521"
+         sodipodi:role="line">ooki</tspan></text>
+  </g>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,-271.59998)"
+     style="display:inline">
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3680"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15px;line-height:125%;font-family:Ubuntu;-inkscape-font-specification:Sans;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       transform="matrix(0.3115551,0.17987641,-0.17987641,0.3115551,2.1937426,272.35181)"><flowRegion
+         id="flowRegion3682"><rect
+           id="rect3684"
+           width="72.478447"
+           height="72.983521"
+           x="6.1871843"
+           y="18.470793" /></flowRegion><flowPara
+         id="flowPara3686"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:66.66666412px;font-family:'URW Gothic';-inkscape-font-specification:'URW Gothic'">C</flowPara></flowRoot>    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:5.39629316px;line-height:125%;font-family:Ubuntu;-inkscape-font-specification:Sans;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.35975277px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="7.137537"
+       y="290.51807"
+       id="text3690"><tspan
+         sodipodi:role="line"
+         id="tspan3688"
+         x="7.137537"
+         y="290.51807"
+         style="font-size:9.59340858px;stroke-width:0.35975277px">ooki</tspan></text>
+  </g>
+</svg>

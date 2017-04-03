@@ -14,7 +14,16 @@
     "background": {
         "scripts": ["background.js"]
     },
-    "page_action": {},
+    "icons": {
+        "48": "icons/48.png",
+        "96": "icons/96.png"
+    },
+    "page_action": {
+        "default_icon": {
+            "16": "icons/16.png",
+            "32": "icons/32.png"
+        }
+    },
     "applications": {
         "gecko": {
             "id": "cookie-manager@robwu.nl"
