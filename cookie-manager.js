@@ -394,6 +394,7 @@ function renderCookie(cookiesOut, cookie) {
         details.path = cookie.path;
         details.secure = cookie.secure;
         details.httpOnly = cookie.httpOnly;
+        if (cookie.sameSite) details.sameSite = cookie.sameSite;
         if (!cookie.session) details.expirationDate = cookie.expirationDate;
         details.storeId = cookie.storeId;
         chrome.cookies.set(details, function() {
