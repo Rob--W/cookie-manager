@@ -49,8 +49,12 @@ document.getElementById('clickAll').onclick = function() {
     for (var i = 0; i < buttons.length; ++i) {
         buttons[i].click();
     }
-    this.value = actionIsRemoveCookie ? 'Restore' : 'Remove';
+    setClickAllIsRestore(actionIsRemoveCookie);
 };
+
+function setClickAllIsRestore(clickIsRestoreAction) {
+    document.getElementById('clickAll').value = clickIsRestoreAction ? 'Restore' : 'Remove';
+}
 
 updateCookieStoreIds();
 window.addEventListener('focus', updateCookieStoreIds);
@@ -279,6 +283,7 @@ function doSearch() {
         var result = document.getElementById('result');
         result.replaceChild(cookiesOut, result.tBodies[0]);
 
+        setClickAllIsRestore(false);
         document.getElementById('clickAll').hidden = hasNoCookies;
     }
 }
