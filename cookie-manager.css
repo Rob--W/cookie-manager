@@ -38,13 +38,10 @@ tbody tr {
 tbody tr:hover {
     outline: 1px solid orange;
 }
-th:nth-child(1) /* buttons */ {
-    text-align: left;
-}
-td:nth-child(2) /* name */,
-td:nth-child(3) /* value */,
-td:nth-child(4) /* domain */,
-td:nth-child(5) /* path */ {
+td:nth-child(1) /* name */,
+td:nth-child(2) /* value */,
+td:nth-child(3) /* domain */,
+td:nth-child(4) /* path */ {
     word-break: break-all;
     min-width: 120px;
 }
@@ -52,7 +49,7 @@ th:nth-child(even),
 td:nth-child(even) {
     background-color: #EEE;
 }
-.cookie-removed td:nth-child(n + 2) {
+.cookie-removed td {
     opacity: 0.4;
 }
 .highlighted,
@@ -61,4 +58,25 @@ td:nth-child(even) {
 }
 .highlighted td:nth-child(even) {
     background-color: #FF6;
+}
+
+.footer-space {
+    height: 3em;
+}
+#footer-controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    background-clip: content-box;
+    border: 0 none;
+    border-top: 0.5em solid;
+    border-image: linear-gradient(to bottom, transparent, white) 50;
+
+    display: flex;
+}
+#footer-controls > button {
+    flex: 1;
+    margin: 0 1px 1px;
 }

@@ -39,11 +39,9 @@
 </div>
 </form>
 
-<div>
 <table id="result">
     <thead>
         <tr>
-            <th><input type="button" id="clickAll" value="Remove" hidden title="Remove all cookies"></th>
             <th>Name</th>
             <th>Value</th>
             <th>Domain</th>
@@ -54,7 +52,7 @@
     </thead>
     <tbody>
         <tr>
-            <td colspan="7" class="no-results">
+            <td colspan="6" class="no-results">
 Use the form to compose a search query.
 Wildcards (*) are supported for every field.
 Blank fields are ignored in the query.
@@ -62,6 +60,14 @@ Blank fields are ignored in the query.
         </tr>
     </tbody>
 </table>
+
+<div class="footer-space"></div>
+<div id="footer-controls" class="footer-space">
+<button id="select-all">Select all (<span class="count"></span>)</button>
+<button id="select-none">Select none</button>
+<button id="remove-selected">Remove selected (<span class="count"></span>)</button>
+<button id="restore-selected">Restore selected (<span class="count"></span>)</button>
+</div>
 
 <script src="cookie-manager.js"></script>
 </body>

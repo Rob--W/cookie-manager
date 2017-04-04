@@ -34,28 +34,76 @@ chrome.extension.isAllowedIncognitoAccess(function(isAllowedAccess) {
         };
     }
 });
+function getAllCookieRows() {
+    if (document.querySelector('#result .no-results')) {
+        return [];
+    }
+    return Array.from(document.getElementById('result').tBodies[0].rows);
+}
+function isRowSelected(row) {
+    return row.classList.contains('highlighted');
+}
+
 document.getElementById('.session').onchange = function() {
     // Expiry is only meaningful for non-session cookies
     document.getElementById('.expiry.min').disabled = 
     document.getElementById('.expiry.max').disabled = this.value == 'true';
 };
-document.getElementById('clickAll').onclick = function() {
-    var actionIsRemoveCookie = this.value === 'Remove';
-    if (!window.confirm('Do you really want to ' + (actionIsRemoveCookie ? 'remove' : 'restore') + ' all matching cookies?')) {
+document.getElementById('select-all').onclick = function() {
+    getAllCookieRows().forEach(function(row) {
+        row.classList.add('highlighted');
+    });
+    updateButtonView();
+};
+document.getElementById('select-none').onclick = function() {
+    getAllCookieRows().forEach(function(row) {
+        row.classList.remove('highlighted');
+    });
+    updateButtonView();
+};
+document.getElementById('remove-selected').onclick = function() {
+    var rows = getAllCookieRows().filter(function(row) {
+        return isRowSelected(row) && !row.cmApi.isDeleted();
+    });
+    if (!window.confirm('Do you really want to remove ' + rows.length + ' selected cookies?')) {
         return;
     }
-    var buttons = document.querySelector('#result tbody').querySelectorAll(
-            actionIsRemoveCookie ? 'input[value="Remove"]' : 'input[value="Restore"]');
-    for (var i = 0; i < buttons.length; ++i) {
-        buttons[i].click();
-    }
-    setClickAllIsRestore(actionIsRemoveCookie);
+    Promise.all(rows.map(function(tr) {
+        return tr.cmApi.deleteCookie();
+    })).then(updateButtonView);
 };
+document.getElementById('restore-selected').onclick = function() {
+    var rows = getAllCookieRows().filter(function(row) {
+        return isRowSelected(row) && row.cmApi.isDeleted();
+    });
+    if (!window.confirm('Do you really want to restore ' + rows.length + ' selected cookies?')) {
+        return;
+    }
+    Promise.all(rows.map(function(tr) {
+        return tr.cmApi.restoreCookie();
+    })).then(updateButtonView);
+};
+function updateButtonView() {
+    var allCookieRows = getAllCookieRows();
+    var selectedCookieRows = allCookieRows.filter(isRowSelected);
+    var deletedSelectionCount = selectedCookieRows.filter(function(row) {
+        return row.cmApi.isDeleted();
+    }).length;
 
-function setClickAllIsRestore(clickIsRestoreAction) {
-    document.getElementById('clickAll').value = clickIsRestoreAction ? 'Restore' : 'Remove';
+    function setButtonCount(buttonId, count) {
+        var button = document.getElementById(buttonId);
+        button.disabled = count === 0;
+        var countElem = button.querySelector('.count');
+        if (countElem) countElem.textContent = count;
+    }
+
+    setButtonCount('select-all', allCookieRows.length);
+    setButtonCount('select-none', selectedCookieRows.length);
+    setButtonCount('remove-selected', selectedCookieRows.length - deletedSelectionCount);
+    setButtonCount('restore-selected', deletedSelectionCount);
 }
 
+updateButtonView();
 updateCookieStoreIds();
 window.addEventListener('focus', updateCookieStoreIds);
 
@@ -266,7 +314,7 @@ function doSearch() {
 
         if (hasNoCookies) {
             var cell = cookiesOut.insertRow().insertCell();
-            cell.colSpan = 7;
+            cell.colSpan = 6;
             if (errors.length === 0) {
                 cell.textContent = 'No cookies found.';
             } else {
@@ -283,8 +331,7 @@ function doSearch() {
         var result = document.getElementById('result');
         result.replaceChild(cookiesOut, result.tBodies[0]);
 
-        setClickAllIsRestore(false);
-        document.getElementById('clickAll').hidden = hasNoCookies;
+        updateButtonView();
     }
 }
 
@@ -334,22 +381,24 @@ function renderCookie(cookiesOut, cookie) {
     var row = cookiesOut.insertRow(-1);
     row.onclick = function() {
         this.classList.toggle('highlighted');
+        updateButtonView();
     };
-    var deleteButton = row.insertCell(0).appendChild(document.createElement('input'));
-    deleteButton.type = 'button';
-    deleteButton.value = 'Remove';
-    deleteButton.onclick = function(e) {
-        e.stopPropagation();
-        if (this.value === 'Remove') {
-            deleteCookie();
-        } else {
-            restoreCookie();
-        }
+    row.cmApi = {};
+    row.cmApi.isDeleted = function() {
+        return row.classList.contains('cookie-removed');
     };
-    row.insertCell(1).textContent = cookie.name;
-    row.insertCell(2).textContent = cookie.value;
-    row.insertCell(3).textContent = cookie.domain;
-    row.insertCell(4).textContent = cookie.path;
+    row.cmApi.deleteCookie = function() {
+        // Promise is resolved regardless of whether the call succeeded.
+        return new Promise(deleteCookie);
+    };
+    row.cmApi.restoreCookie = function() {
+        // Promise is resolved regardless of whether the call succeeded.
+        return new Promise(restoreCookie);
+    };
+    row.insertCell(0).textContent = cookie.name;
+    row.insertCell(1).textContent = cookie.value;
+    row.insertCell(2).textContent = cookie.domain;
+    row.insertCell(3).textContent = cookie.path;
 
     var extraInfo = [];
     // Not sure if host-only should be added
@@ -361,7 +410,7 @@ function renderCookie(cookiesOut, cookie) {
     if (cookie.sameSite === 'lax') extraInfo.push('SameSite=lax');
     else if (cookie.sameSite === 'strict') extraInfo.push('SameSite=strict');
     extraInfo = extraInfo.join(', ');
-    row.insertCell(5).textContent = extraInfo;
+    row.insertCell(4).textContent = extraInfo;
 
     var expiryInfo;
     if (cookie.session) {
@@ -369,9 +418,9 @@ function renderCookie(cookiesOut, cookie) {
     } else {
         expiryInfo = formatDate(new Date(cookie.expirationDate*1000));
     }
-    row.insertCell(6).textContent = expiryInfo;
+    row.insertCell(5).textContent = expiryInfo;
 
-    function deleteCookie() {
+    function deleteCookie(resolve) {
         chrome.cookies.remove({
             url: cookie.url,
             name: cookie.name,
@@ -380,12 +429,12 @@ function renderCookie(cookiesOut, cookie) {
             if (chrome.runtime.lastError) {
                 alert('Failed to remove cookie because of:\n' + chrome.runtime.lastError.message);
             } else {
-                deleteButton.value = 'Restore';
                 row.classList.add('cookie-removed');
             }
+            resolve();
         });
     }
-    function restoreCookie() {
+    function restoreCookie(resolve) {
         var details = {};
         details.url = cookie.url;
         details.name = cookie.name;
@@ -401,9 +450,9 @@ function renderCookie(cookiesOut, cookie) {
             if (chrome.runtime.lastError) {
                 alert('Failed to save cookie because of:\n' + chrome.runtime.lastError.message);
             } else {
-                deleteButton.value = 'Remove';
                 row.classList.remove('cookie-removed');
             }
+            resolve();
         });
     }
 }
