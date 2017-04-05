@@ -144,7 +144,9 @@ document.getElementById('editform').onsubmit = function(event) {
 
     cookie.secure = document.getElementById('editform.secure').checked;
     cookie.httpOnly = document.getElementById('editform.httpOnly').checked;
-    // TODO: sameSite
+    if (!document.getElementById('editform.sameSiteBox').hidden) {
+        cookie.sameSite = document.getElementById('editform.sameSite').value;
+    }
     if (document.getElementById('editform.sessionFalse').checked) {
         cookie.expirationDate = dateToExpiryCompatibleTimestamp(document.getElementById('editform.expiry'));
     }
@@ -158,6 +160,10 @@ document.getElementById('editform').onsubmit = function(event) {
         }
     });
 };
+
+// Only show sameSite controls if supported by the API.
+document.getElementById('editform.sameSiteBox').hidden = !chrome.cookies.SameSiteStatus;
+
 document.getElementById('editform').oninput =
 document.getElementById('editform').onchange = function() {
     setEditSaveEnabled(true);
@@ -206,7 +212,9 @@ document.getElementById('edit-copy').onclick = function() {
 
     document.getElementById('editform.secure').checked = cookie.secure;
     document.getElementById('editform.httpOnly').checked = cookie.httpOnly;
-    // TODO: sameSite
+    if (cookie.sameSite) {
+        document.getElementById('editform.sameSite').value = cookie.sameSite;
+    }
     document.getElementById('editform.storeId').value = cookie.storeId;
     setEditSaveEnabled(true);
 };

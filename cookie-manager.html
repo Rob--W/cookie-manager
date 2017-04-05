@@ -107,7 +107,14 @@ Blank fields are ignored in the query.
         <legend>Flags</legend>
         <label><input type="checkbox" id="editform.secure"> Secure</label>
         <label><input type="checkbox" id="editform.httpOnly"> httpOnly</label>
-        <!-- TODO: sameSite -->
+    </fieldset>
+    <fieldset id="editform.sameSiteBox">
+        <legend>Same-site status</legend>
+        <select id="editform.sameSite">
+            <option value="no_restriction" selected>No restriction (default)</option>
+            <option value="lax">Lax</option>
+            <option value="strict">Strict</option>
+        </select>
     </fieldset>
     <fieldset>
         <legend>Cookie jar</legend>
