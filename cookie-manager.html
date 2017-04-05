@@ -61,12 +61,71 @@ Blank fields are ignored in the query.
     </tbody>
 </table>
 
+<form id="editform">
+    <fieldset>
+        <legend>URL</legend>
+        <input type="url" id="editform.url" required>
+    </fieldset>
+    <fieldset>
+        <legend>Name</legend>
+        <input type="text" id="editform.name" required>
+    </fieldset>
+    <fieldset>
+        <legend>Value</legend>
+        <input type="text" id="editform.value">
+    </fieldset>
+    <fieldset>
+        <legend>Domain</legend>
+        <label><input type="radio" name="domain" id="editform.hostOnlyTrue" checked>Host-only cookie for given URL</label>
+        <label><input type="radio" name="domain" id="editform.hostOnlyFalseDefault" checked>(Sub)domains of given URL</label>
+        <label for="editform.domain">
+            <input type="radio" name="domain" id="editform.hostOnlyFalseCustom">
+            <span>(Sub)domains of:</span>
+            <input type="text" id="editform.domain">
+        </label>
+    </fieldset>
+    <fieldset>
+        <legend>Path</legend>
+        <label><input type="radio" name="path" id="editform.pathIsSlash" checked>/</label>
+        <label><input type="radio" name="path" id="editform.pathIsDefault">Path of given URL</label>
+        <label for="editform.path">
+            <input type="radio" name="path" id="editform.pathIsCustom">
+            <span>Custom path:</span>
+            <input type="text" id="editform.path">
+        </label>
+    </fieldset>
+    <fieldset>
+        <legend>Expiration</legend>
+        <label><input type="radio" name="expires" id="editform.sessionTrue" checked>At end of session</label>
+        <label for="editform.expiry">
+            <input type="radio" name="expires" id="editform.sessionFalse">
+            <span>Expiry date:</span>
+            <input type="date" id="editform.expiry">
+        </label>
+    </fieldset>
+    <fieldset>
+        <legend>Flags</legend>
+        <label><input type="checkbox" id="editform.secure"> Secure</label>
+        <label><input type="checkbox" id="editform.httpOnly"> httpOnly</label>
+        <!-- TODO: sameSite -->
+    </fieldset>
+    <fieldset>
+        <legend>Cookie jar</legend>
+        <select id="editform.storeId" required></select>
+    </fieldset>
+</form>
+
 <div class="footer-space"></div>
 <div id="footer-controls" class="footer-space">
 <button id="select-all">Select all (<span class="count"></span>)</button>
 <button id="select-none">Select none</button>
 <button id="remove-selected">Remove selected (<span class="count"></span>)</button>
 <button id="restore-selected">Restore selected (<span class="count"></span>)</button>
+<button id="add-or-edit">Add / edit</button>
+
+<button id="edit-save" class="editbutton" form="editform">Save</button>
+<button id="edit-copy" class="editbutton">Copy most recently selected cookie</button>
+<button id="edit-cancel" class="editbutton">Cancel</button>
 </div>
 
 <script src="cookie-manager.js"></script>

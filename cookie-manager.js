@@ -5,6 +5,9 @@
 'use strict';
 
 var ANY_COOKIE_STORE_ID = '(# of any cookie jar)';
+// Updated whenever the user clicks on a row.
+// Used by the edit form for auto-fill.
+var mostRecentlySelectedCookie;
 
 document.getElementById('searchform').onsubmit = function(e) {
     e.preventDefault();
@@ -83,6 +86,7 @@ document.getElementById('restore-selected').onclick = function() {
         return tr.cmApi.restoreCookie();
     })).then(updateButtonView);
 };
+
 function updateButtonView() {
     var allCookieRows = getAllCookieRows();
     var selectedCookieRows = allCookieRows.filter(isRowSelected);
@@ -102,10 +106,130 @@ function updateButtonView() {
     setButtonCount('remove-selected', selectedCookieRows.length - deletedSelectionCount);
     setButtonCount('restore-selected', deletedSelectionCount);
 }
+function setEditSaveEnabled(canSave) {
+    var editSaveButton = document.getElementById('edit-save');
+    editSaveButton.disabled = !canSave;
+    editSaveButton.textContent = canSave ? 'Save' : 'Saved';
+}
 
 updateButtonView();
 updateCookieStoreIds();
 window.addEventListener('focus', updateCookieStoreIds);
+
+// Add/edit cookie functionality
+document.getElementById('add-or-edit').onclick = function() {
+    document.body.classList.add('editing-cookie');
+};
+document.getElementById('editform').onsubmit = function(event) {
+    event.preventDefault();
+    var cookie = {};
+    cookie.url = document.getElementById('editform.url').value;
+    cookie.name = document.getElementById('editform.name').value;
+    cookie.value = document.getElementById('editform.value').value;
+
+    var parsedUrl = new URL(cookie.url);
+    if (document.getElementById('editform.hostOnlyFalseDefault').checked) {
+        cookie.domain = parsedUrl.hostname;
+    } else if (document.getElementById('editform.hostOnlyFalseCustom').checked) {
+        cookie.domain = document.getElementById('editform.domain').value;
+    }
+    // Else (hostOnlyTrue): the cookie becomes a host-only cookie.
+
+    if (document.getElementById('editform.pathIsSlash').checked) {
+        cookie.path = '/';
+    } else if (document.getElementById('editform.pathIsCustom').checked) {
+        cookie.path = document.getElementById('editform.path').value;
+    }
+    // Else (pathIsDefault): Defaults to the path portion of the url parameter.
+
+    cookie.secure = document.getElementById('editform.secure').checked;
+    cookie.httpOnly = document.getElementById('editform.httpOnly').checked;
+    // TODO: sameSite
+    if (document.getElementById('editform.sessionFalse').checked) {
+        cookie.expirationDate = dateToExpiryCompatibleTimestamp(document.getElementById('editform.expiry'));
+    }
+    cookie.storeId = document.getElementById('editform.storeId').value;
+
+    chrome.cookies.set(cookie, function() {
+        if (chrome.runtime.lastError) {
+            alert('Failed to save cookie because of:\n' + chrome.runtime.lastError.message);
+        } else {
+            setEditSaveEnabled(false);
+        }
+    });
+};
+document.getElementById('editform').oninput =
+document.getElementById('editform').onchange = function() {
+    setEditSaveEnabled(true);
+};
+document.getElementById('editform').onkeydown = function(event) {
+    if (event.charCode) {
+        setEditSaveEnabled(true);
+    }
+};
+
+document.getElementById('edit-copy').onclick = function() {
+    var cookie = mostRecentlySelectedCookie;
+    if (!cookie) {
+        alert('Please search for cookies and click on a cookie row to select a cookie.');
+        return;
+    }
+    document.getElementById('editform.url').value = cookie.url;
+    document.getElementById('editform.name').value = cookie.name;
+    document.getElementById('editform.value').value = cookie.value;
+
+    var parsedUrl = new URL(cookie.url);
+
+    if (cookie.hostOnly) {
+        document.getElementById('editform.hostOnlyTrue').checked = true;
+    } else if (cookie.domain === '.' + parsedUrl.hostname) {
+        document.getElementById('editform.hostOnlyFalseDefault').checked = true;
+    } else {
+        document.getElementById('editform.hostOnlyFalseCustom').checked = true;
+    }
+    document.getElementById('editform.domain').value = cookie.domain;
+
+    if (cookie.path === '/') {
+        document.getElementById('editform.pathIsSlash').checked = true;
+    } else if (cookie.path === parsedUrl.pathname) {
+        document.getElementById('editform.pathIsDefault').checked = true;
+    } else {
+        document.getElementById('editform.pathIsCustom').checked = true;
+    }
+    document.getElementById('editform.path').value = cookie.path;
+    if (cookie.session) {
+        document.getElementById('editform.sessionTrue').checked = true;
+    } else {
+        document.getElementById('editform.sessionFalse').checked = true;
+        document.getElementById('editform.expiry').valueAsNumber = cookie.expirationDate * 1000;
+    }
+
+    document.getElementById('editform.secure').checked = cookie.secure;
+    document.getElementById('editform.httpOnly').checked = cookie.httpOnly;
+    // TODO: sameSite
+    document.getElementById('editform.storeId').value = cookie.storeId;
+    setEditSaveEnabled(true);
+};
+document.getElementById('edit-cancel').onclick = function() {
+    document.body.classList.remove('editing-cookie');
+};
+
+Array.from(document.querySelectorAll('#editform label[for]')).forEach(function(radioOtherBox) {
+    var radioInput = radioOtherBox.querySelector('input[type=radio]');
+    var otherInput = radioOtherBox.querySelector('input:not([type=radio])');
+    radioInput.onchange = function() {
+        if (radioInput.checked) {
+            otherInput.focus();
+        }
+    };
+    otherInput.onfocus = function() {
+        if (radioInput.checked) return;
+        radioInput.checked = true;
+        setEditSaveEnabled(true);
+    };
+});
+
+
 
 function getAllCookieStores(callback) {
     chrome.cookies.getAllCookieStores(function(cookieStores) {
@@ -131,16 +255,25 @@ function getAllCookieStores(callback) {
 function updateCookieStoreIds() {
     getAllCookieStores(function(cookieStores) {
         var cookieJarDropdown = document.getElementById('.storeId');
+        var editCoJarDropdown = document.getElementById('editform.storeId');
         var selectedValue = cookieJarDropdown.value;
+        var editValue = editCoJarDropdown.value;
         cookieJarDropdown.textContent = '';
         cookieJarDropdown.appendChild(new Option('Any cookie jar', ANY_COOKIE_STORE_ID));
+        editCoJarDropdown.textContent = '';
         // TODO: Do something with cookieStores[*].tabIds ?
         cookieStores.forEach(function(cookieStore) {
             cookieJarDropdown.appendChild(new Option(storeIdToHumanName(cookieStore.id), cookieStore.id));
+            editCoJarDropdown.appendChild(new Option(storeIdToHumanName(cookieStore.id), cookieStore.id));
         });
         cookieJarDropdown.value = selectedValue;
+        editCoJarDropdown.value = editValue;
         if (cookieJarDropdown.selectedIndex === -1) {
             cookieJarDropdown.value = ANY_COOKIE_STORE_ID;
+        }
+        if (editCoJarDropdown.selectedIndex === -1) {
+            // Presumably the default cookie jar.
+            editCoJarDropdown.selectedIndex = 0;
         }
     });
 }
@@ -386,6 +519,7 @@ function renderCookie(cookiesOut, cookie) {
     var row = cookiesOut.insertRow(-1);
     row.onclick = function() {
         this.classList.toggle('highlighted');
+        mostRecentlySelectedCookie = cookie;
         updateButtonView();
     };
     row.cmApi = {};

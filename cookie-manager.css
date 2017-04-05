@@ -23,6 +23,59 @@
     background-color: #EEE;
 }
 
+
+#editform {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 2.5em;
+    padding: 1em;
+    background: white;
+    overflow: auto;
+
+    display: none;
+}
+#editform fieldset > label {
+    display: block;
+}
+#editform input[type=date],
+#editform input[type=text],
+#editform input[type=url] {
+    width: 100%;
+}
+#editform label[for] {
+    display: flex;
+    white-space: nowrap;
+    align-items: center;
+}
+#editform label[for] > input {
+    align-self: baseline;
+}
+
+#editform label[for] input[type=radio] {
+    flex-shrink: 0;
+}
+#editform label[for] input[type=text],
+#editform label[for] input[type=date] {
+    flex: 1;
+}
+
+body.editing-cookie {
+    overflow: hidden;
+}
+.editing-cookie #editform {
+    display: block;
+}
+.editing-cookie #footer-controls > button:not(.editbutton),
+#footer-controls > button.editbutton {
+    display: none;
+}
+.editing-cookie #footer-controls > button.editbutton {
+    display: block;
+}
+
+
 table {
     border-collapse: collapse;
     white-space: pre-wrap;
