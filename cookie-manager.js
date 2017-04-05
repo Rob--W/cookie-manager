@@ -213,8 +213,8 @@ function doSearch() {
         filters.value = patternToRegExp(valueFilterPattern);
     }
     // Custom filter: Minimal/maximal expiry date
-    var expiryMinFilter = dateToExpiryCompatibleTimestamp(document.getElementById('.expiry.min').value);
-    var expiryMaxFilter = dateToExpiryCompatibleTimestamp(document.getElementById('.expiry.max').value);
+    var expiryMinFilter = dateToExpiryCompatibleTimestamp(document.getElementById('.expiry.min'));
+    var expiryMaxFilter = dateToExpiryCompatibleTimestamp(document.getElementById('.expiry.max'));
 
     // Filter by httpOnly. The chrome.cookies API somehow does not support filtering by httpOnly...
     var httpOnly = query.httpOnly;
@@ -348,9 +348,14 @@ function patternToRegExp(pattern) {
  * Converts the value of input[type=date] to a timestamp that can be used in
  * comparisons with cookie.expirationDate
  */
-function dateToExpiryCompatibleTimestamp(date) {
-    date = new Date(date);
-    date.setMinutes(date.getTimezoneOffset());
+function dateToExpiryCompatibleTimestamp(dateInput) {
+    if (!dateInput || !dateInput.value) {
+        return NaN;
+    }
+    if (dateInput.valueAsNumber) {
+        return dateInput.valueAsNumber / 1000;
+    }
+    var date = dateInput.valueAsDate || new Date(dateInput.value);
     return date.getTime() / 1000;
 }
 
