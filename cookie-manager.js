@@ -110,6 +110,11 @@ function setEditSaveEnabled(canSave) {
     var editSaveButton = document.getElementById('edit-save');
     editSaveButton.disabled = !canSave;
     editSaveButton.textContent = canSave ? 'Save' : 'Saved';
+
+    // Reset validation messages so that the validation can happen again upon submission.
+    document.getElementById('editform.domain').setCustomValidity('');
+    document.getElementById('editform.path').setCustomValidity('');
+    document.getElementById('editform.expiry').setCustomValidity('');
 }
 
 updateButtonView();
@@ -131,7 +136,12 @@ document.getElementById('editform').onsubmit = function(event) {
     if (document.getElementById('editform.hostOnlyFalseDefault').checked) {
         cookie.domain = parsedUrl.hostname;
     } else if (document.getElementById('editform.hostOnlyFalseCustom').checked) {
-        cookie.domain = document.getElementById('editform.domain').value;
+        cookie.domain = document.getElementById('editform.domain').value.trim();
+        if (!isPartOfDomain(cookie.domain, parsedUrl.hostname)) {
+            document.getElementById('editform.domain').setCustomValidity('The domain must be a part of the given URL.');
+            document.getElementById('editform').reportValidity();
+            return;
+        }
     }
     // Else (hostOnlyTrue): the cookie becomes a host-only cookie.
 
@@ -139,6 +149,11 @@ document.getElementById('editform').onsubmit = function(event) {
         cookie.path = '/';
     } else if (document.getElementById('editform.pathIsCustom').checked) {
         cookie.path = document.getElementById('editform.path').value;
+        if (!cookie.path.startsWith('/')) {
+            document.getElementById('editform.path').setCustomValidity('The path must start with a /.');
+            document.getElementById('editform').reportValidity();
+            return;
+        }
     }
     // Else (pathIsDefault): Defaults to the path portion of the url parameter.
 
@@ -149,6 +164,11 @@ document.getElementById('editform').onsubmit = function(event) {
     }
     if (document.getElementById('editform.sessionFalse').checked) {
         cookie.expirationDate = dateToExpiryCompatibleTimestamp(document.getElementById('editform.expiry'));
+        if (isNaN(cookie.expirationDate)) {
+            document.getElementById('editform.expiry').setCustomValidity('Please enter a valid expiration date.');
+            document.getElementById('editform').reportValidity();
+            return;
+        }
     }
     cookie.storeId = document.getElementById('editform.storeId').value;
 
@@ -515,6 +535,15 @@ function reverseString(string) {
         result += string[i];
     }
     return result;
+}
+
+function isPartOfDomain(domain, mainDomain) {
+    function normalizeDomain(d) {
+        return d.toLowerCase().replace(/^\,?/, '.');
+    }
+    domain = normalizeDomain(domain);
+    mainDomain = normalizeDomain(mainDomain);
+    return domain !== '' && mainDomain.endsWith(domain);
 }
 
 
