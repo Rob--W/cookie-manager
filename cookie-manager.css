@@ -133,3 +133,9 @@ td:nth-child(even) {
     flex: 1;
     margin: 0 1px 1px;
 }
+
+@media (max-width:700px) {
+    #footer-controls > button {
+        font-size: 0.6em; /* fit 3 visible lines in the button */
+    }
+}
