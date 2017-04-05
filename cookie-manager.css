@@ -39,7 +39,7 @@
 #editform fieldset > label {
     display: block;
 }
-#editform input[type=date],
+#editform input[type=datetime-local],
 #editform input[type=text],
 #editform input[type=url] {
     width: 100%;
@@ -57,7 +57,7 @@
     flex-shrink: 0;
 }
 #editform label[for] input[type=text],
-#editform label[for] input[type=date] {
+#editform label[for] input[type=datetime-local] {
     flex: 1;
 }
 

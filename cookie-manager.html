@@ -29,8 +29,8 @@
             <option value="true">Session cookies</option>
             <option value="false">Non-session cookies</option>
         </select>
-        <input type="date" id=".expiry.min" title="Minimal expiry date">
-        <input type="date" id=".expiry.max" title="Maximal expiry date">
+        <input type="datetime-local" id=".expiry.min" placeholder="min expiry date" title="Minimal expiry date">
+        <input type="datetime-local" id=".expiry.max" placeholder="max expiry date" title="Maximal expiry date">
     </div>
     <div class="flex-grid">
         <select id=".storeId">
@@ -100,7 +100,7 @@ Blank fields are ignored in the query.
         <label for="editform.expiry">
             <input type="radio" name="expires" id="editform.sessionFalse">
             <span>Expiry date:</span>
-            <input type="date" id="editform.expiry">
+            <input type="datetime-local" id="editform.expiry">
         </label>
     </fieldset>
     <fieldset>
@@ -136,5 +136,6 @@ Blank fields are ignored in the query.
 </div>
 
 <script src="cookie-manager.js"></script>
+<script src="datetime-local-polyfill.js"></script>
 </body>
 </html>

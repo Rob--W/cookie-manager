@@ -227,7 +227,7 @@ document.getElementById('edit-copy').onclick = function() {
         document.getElementById('editform.sessionTrue').checked = true;
     } else {
         document.getElementById('editform.sessionFalse').checked = true;
-        document.getElementById('editform.expiry').valueAsNumber = cookie.expirationDate * 1000;
+        setExpiryTimestamp(document.getElementById('editform.expiry'), cookie.expirationDate);
     }
 
     document.getElementById('editform.secure').checked = cookie.secure;
@@ -518,6 +518,19 @@ function dateToExpiryCompatibleTimestamp(dateInput) {
     }
     var date = dateInput.valueAsDate || new Date(dateInput.value);
     return date.getTime() / 1000;
+}
+
+function setExpiryTimestamp(dateInput, expirationDate) {
+    expirationDate *= 1000;
+    console.assert(!isNaN(expirationDate),
+        'expirationDate is not a valid numeric timestamp: ' + arguments[1]);
+
+    try {
+        dateInput.valueAsNumber = expirationDate;
+    } catch (e) {
+        // Not supported (e.g. Firefox 52).
+        dateInput.value = new Date(expirationDate).toJSON();
+    }
 }
 
 var months = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
