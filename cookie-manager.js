@@ -137,9 +137,7 @@ document.getElementById('editform').onsubmit = function(event) {
         cookie.domain = parsedUrl.hostname;
     } else if (document.getElementById('editform.hostOnlyFalseCustom').checked) {
         cookie.domain = document.getElementById('editform.domain').value.trim();
-        if (!isPartOfDomain(cookie.domain, parsedUrl.hostname)) {
-            document.getElementById('editform.domain').setCustomValidity('The domain must be a part of the given URL.');
-            document.getElementById('editform').reportValidity();
+        if (reportValidity('editform.domain', cookieValidators.domain(cookie.domain, parsedUrl.hostname))) {
             return;
         }
     }
@@ -149,9 +147,7 @@ document.getElementById('editform').onsubmit = function(event) {
         cookie.path = '/';
     } else if (document.getElementById('editform.pathIsCustom').checked) {
         cookie.path = document.getElementById('editform.path').value;
-        if (!cookie.path.startsWith('/')) {
-            document.getElementById('editform.path').setCustomValidity('The path must start with a /.');
-            document.getElementById('editform').reportValidity();
+        if (reportValidity('editform.path', cookieValidators.path(cookie.path))) {
             return;
         }
     }
@@ -164,9 +160,7 @@ document.getElementById('editform').onsubmit = function(event) {
     }
     if (document.getElementById('editform.sessionFalse').checked) {
         cookie.expirationDate = dateToExpiryCompatibleTimestamp(document.getElementById('editform.expiry'));
-        if (isNaN(cookie.expirationDate)) {
-            document.getElementById('editform.expiry').setCustomValidity('Please enter a valid expiration date.');
-            document.getElementById('editform').reportValidity();
+        if (reportValidity('editform.expiry', cookieValidators.expirationDate(cookie.expirationDate))) {
             return;
         }
     }
@@ -179,6 +173,15 @@ document.getElementById('editform').onsubmit = function(event) {
             setEditSaveEnabled(false);
         }
     });
+
+    function reportValidity(elementId, validationMessage) {
+        if (!validationMessage) {
+            return false;  // Should not abort.
+        }
+        document.getElementById(elementId).setCustomValidity(validationMessage);
+        document.getElementById('editform').reportValidity();
+        return true;  // Validation error; Abort.
+    }
 };
 
 // Only show sameSite controls if supported by the API.
@@ -558,6 +561,22 @@ function isPartOfDomain(domain, mainDomain) {
     mainDomain = normalizeDomain(mainDomain);
     return domain !== '' && mainDomain.endsWith(domain);
 }
+
+var cookieValidators = {};
+cookieValidators.domain = function(domain, mainDomain) {
+    if (!isPartOfDomain(domain, mainDomain))
+        return 'The domain must be a part of the given URL.';
+};
+cookieValidators.path = function(path) {
+    if (!path.startsWith('/'))
+        return 'The path must start with a /.';
+};
+cookieValidators.expirationDate = function(expirationDate) {
+    // expirationDate is parsed using dateToExpiryCompatibleTimestamp.
+    // If the input is invalid, then it is NaN.
+    if (isNaN(expirationDate))
+        return 'Please enter a valid expiration date.';
+};
 
 
 /**
