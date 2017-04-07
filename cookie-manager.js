@@ -570,7 +570,7 @@ function isPartOfDomain(domain, mainDomain) {
 }
 
 var cookieValidators = {};
-cookieValidators._nameAndValueCommon = function(prefix, v) {
+cookieValidators._cookiePartCommon = function(prefix, v) {
     // Based on ParsedCookie::ParseTokenString and ParsedCookie::ParseValueString
     // via CanonicalCookie::Create.
     if (/^[ \t]/.test(v))
@@ -586,11 +586,11 @@ cookieValidators.name = function(name) {
     // Based on ParsedCookie::ParseTokenString via CanonicalCookie::Create.
     if (name.includes('='))
         return 'The cookie name cannot contain "=".';
-    return cookieValidators._nameAndValueCommon('The cookie name', name);
+    return cookieValidators._cookiePartCommon('The cookie name', name);
 };
 cookieValidators.value = function(value) {
     // Based on ParsedCookie::ParseValueString via CanonicalCookie::Create.
-    return cookieValidators._nameAndValueCommon('The cookie value', value);
+    return cookieValidators._cookiePartCommon('The cookie value', value);
 };
 cookieValidators.domain = function(domain, mainDomain) {
     if (!isPartOfDomain(domain, mainDomain))
@@ -599,6 +599,7 @@ cookieValidators.domain = function(domain, mainDomain) {
 cookieValidators.path = function(path) {
     if (!path.startsWith('/'))
         return 'The path must start with a /.';
+    return cookieValidators._cookiePartCommon('The path', path);
 };
 cookieValidators.expirationDate = function(expirationDate) {
     // expirationDate is parsed using dateToExpiryCompatibleTimestamp.
