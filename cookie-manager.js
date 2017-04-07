@@ -562,7 +562,7 @@ function reverseString(string) {
 
 function isPartOfDomain(domain, mainDomain) {
     function normalizeDomain(d) {
-        return d.toLowerCase().replace(/^\,?/, '.');
+        return d.toLowerCase().replace(/^\.?/, '.');
     }
     domain = normalizeDomain(domain);
     mainDomain = normalizeDomain(mainDomain);
