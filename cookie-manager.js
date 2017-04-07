@@ -112,6 +112,8 @@ function setEditSaveEnabled(canSave) {
     editSaveButton.textContent = canSave ? 'Save' : 'Saved';
 
     // Reset validation messages so that the validation can happen again upon submission.
+    document.getElementById('editform.name').setCustomValidity('');
+    document.getElementById('editform.value').setCustomValidity('');
     document.getElementById('editform.domain').setCustomValidity('');
     document.getElementById('editform.path').setCustomValidity('');
     document.getElementById('editform.expiry').setCustomValidity('');
@@ -131,6 +133,11 @@ document.getElementById('editform').onsubmit = function(event) {
     cookie.url = document.getElementById('editform.url').value;
     cookie.name = document.getElementById('editform.name').value;
     cookie.value = document.getElementById('editform.value').value;
+
+    if (reportValidity('editform.name', cookieValidators.name(cookie.name)) ||
+        reportValidity('editform.value', cookieValidators.value(cookie.value))) {
+        return;
+    }
 
     var parsedUrl = new URL(cookie.url);
     if (document.getElementById('editform.hostOnlyFalseDefault').checked) {
@@ -563,6 +570,28 @@ function isPartOfDomain(domain, mainDomain) {
 }
 
 var cookieValidators = {};
+cookieValidators._nameAndValueCommon = function(prefix, v) {
+    // Based on ParsedCookie::ParseTokenString and ParsedCookie::ParseValueString
+    // via CanonicalCookie::Create.
+    if (/^[ \t]/.test(v))
+        return prefix + ' cannot start with whitespace.';
+    if (/[ \t]$/.test(v))
+        return prefix + ' cannot end with whitespace.';
+    if (/[\r\n\0]/.test(v))
+        return prefix + ' cannot contain line terminators.';
+    if (v.includes(';'))
+        return prefix + ' cannot contain ";".';
+};
+cookieValidators.name = function(name) {
+    // Based on ParsedCookie::ParseTokenString via CanonicalCookie::Create.
+    if (name.includes('='))
+        return 'The cookie name cannot contain "=".';
+    return cookieValidators._nameAndValueCommon('The cookie name', name);
+};
+cookieValidators.value = function(value) {
+    // Based on ParsedCookie::ParseValueString via CanonicalCookie::Create.
+    return cookieValidators._nameAndValueCommon('The cookie value', value);
+};
 cookieValidators.domain = function(domain, mainDomain) {
     if (!isPartOfDomain(domain, mainDomain))
         return 'The domain must be a part of the given URL.';
