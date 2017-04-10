@@ -104,6 +104,9 @@ function modifyCookieRows(shouldRestore) {
     });
     if (privateFirefoxCookies.length) {
         promises.unshift(setCookiesInPrivateMode(privateFirefoxCookies).then(function(results) {
+            if (results.errorMessage) {
+                return results.errorMessage;
+            }
             results.forEach(function(success, i) {
                 if (success) {
                     privateFirefoxRows[i].cmApi.setDeleted(!shouldRestore);
