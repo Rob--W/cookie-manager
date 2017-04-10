@@ -1,6 +1,7 @@
 /* globals chrome, alert */
 /* globals Promise */
 /* globals console */
+/* globals setCookiesInPrivateMode */
 /* jshint browser: true */
 'use strict';
 
@@ -81,19 +82,41 @@ function modifyCookieRows(shouldRestore) {
     }
     // Promises that always resolve. Upon success, a void value. Otherwise an error string.
     var promises = [];
+    var privateFirefoxRows = [];
+    var privateFirefoxCookies = [];
     rows.forEach(function(row) {
+        if (row.cmApi.rawCookie.storeId === 'firefox-private') {
+            var cookie = Object.assign({}, row.cmApi.rawCookie);
+            if (!shouldRestore) {
+                cookie.session = false;
+                cookie.expirationDate = 0;
+                cookie.value = '';
+            }
+            privateFirefoxRows.push(row);
+            privateFirefoxCookies.push(cookie);
+            return;
+        }
         if (shouldRestore) {
             promises.push(row.cmApi.restoreCookie());
         } else {
             promises.push(row.cmApi.deleteCookie());
         }
     });
+    if (privateFirefoxCookies.length) {
+        promises.unshift(setCookiesInPrivateMode(privateFirefoxCookies).then(function(results) {
+            results.forEach(function(success, i) {
+                if (success) {
+                    privateFirefoxRows[i].cmApi.setDeleted(!shouldRestore);
+                }
+            });
+        }));
+    }
 
     Promise.all(promises).then(function(errors) {
         updateButtonView();
         errors = errors.filter(function(error) { return error; });
         if (errors.length) {
-            alert('Failed to ' + action + ' cookies because of:\n' + errors.join('\n'));
+            alert('Failed to ' + action + ' some cookies because of:\n' + errors.join('\n'));
         }
     });
 }
@@ -184,13 +207,24 @@ document.getElementById('editform').onsubmit = function(event) {
     }
     cookie.storeId = document.getElementById('editform.storeId').value;
 
+    if (cookie.storeId === 'firefox-private') {
+        setCookiesInPrivateMode([cookie]).then(function(results) {
+            onCookieSet(results.errorMessage);
+        });
+        return;
+    }
+
     chrome.cookies.set(cookie, function() {
-        if (chrome.runtime.lastError) {
-            alert('Failed to save cookie because of:\n' + chrome.runtime.lastError.message);
+        onCookieSet(chrome.runtime.lastError && chrome.runtime.lastError.message);
+    });
+
+    function onCookieSet(errorMessage) {
+        if (errorMessage) {
+            alert('Failed to save cookie because of:\n' + errorMessage);
         } else {
             setEditSaveEnabled(false);
         }
-    });
+    }
 
     function reportValidity(elementId, validationMessage) {
         if (!validationMessage) {
@@ -584,6 +618,8 @@ var cookieValidators = {};
 cookieValidators._cookiePartCommon = function(prefix, v) {
     // Based on ParsedCookie::ParseTokenString and ParsedCookie::ParseValueString
     // via CanonicalCookie::Create.
+    // TODO: These restrictions are for Chrome.
+    // TODO: Look at netwerk/cookie/nsCookieService.cpp for Firefox.
     if (/^[ \t]/.test(v))
         return prefix + ' cannot start with whitespace.';
     if (/[ \t]$/.test(v))
