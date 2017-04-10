@@ -65,27 +65,38 @@ document.getElementById('select-none').onclick = function() {
     updateButtonView();
 };
 document.getElementById('remove-selected').onclick = function() {
-    var rows = getAllCookieRows().filter(function(row) {
-        return isRowSelected(row) && !row.cmApi.isDeleted();
-    });
-    if (!window.confirm('Do you really want to remove ' + rows.length + ' selected cookies?')) {
-        return;
-    }
-    Promise.all(rows.map(function(tr) {
-        return tr.cmApi.deleteCookie();
-    })).then(updateButtonView);
+    modifyCookieRows(false);
 };
 document.getElementById('restore-selected').onclick = function() {
+    modifyCookieRows(true);
+};
+
+function modifyCookieRows(shouldRestore) {
+    var action = shouldRestore ? 'restore' : 'remove';
     var rows = getAllCookieRows().filter(function(row) {
-        return isRowSelected(row) && row.cmApi.isDeleted();
+        return isRowSelected(row) && row.cmApi.isDeleted() === shouldRestore;
     });
-    if (!window.confirm('Do you really want to restore ' + rows.length + ' selected cookies?')) {
+    if (!window.confirm('Do you really want to ' + action + ' ' + rows.length + ' selected cookies?')) {
         return;
     }
-    Promise.all(rows.map(function(tr) {
-        return tr.cmApi.restoreCookie();
-    })).then(updateButtonView);
-};
+    // Promises that always resolve. Upon success, a void value. Otherwise an error string.
+    var promises = [];
+    rows.forEach(function(row) {
+        if (shouldRestore) {
+            promises.push(row.cmApi.restoreCookie());
+        } else {
+            promises.push(row.cmApi.deleteCookie());
+        }
+    });
+
+    Promise.all(promises).then(function(errors) {
+        updateButtonView();
+        errors = errors.filter(function(error) { return error; });
+        if (errors.length) {
+            alert('Failed to ' + action + ' cookies because of:\n' + errors.join('\n'));
+        }
+    });
+}
 
 function updateButtonView() {
     var allCookieRows = getAllCookieRows();
@@ -621,16 +632,24 @@ function renderCookie(cookiesOut, cookie) {
         mostRecentlySelectedCookie = cookie;
         updateButtonView();
     };
-    row.cmApi = {};
+    row.cmApi = {
+        // The caller should not modify this value!
+        get rawCookie() { return cookie; },
+    };
     row.cmApi.isDeleted = function() {
         return row.classList.contains('cookie-removed');
     };
+    row.cmApi.setDeleted = function(isDeleted) {
+        row.classList.toggle('cookie-removed', isDeleted);
+    };
     row.cmApi.deleteCookie = function() {
         // Promise is resolved regardless of whether the call succeeded.
+        // The resolution value is an error string if an error occurs.
         return new Promise(deleteCookie);
     };
     row.cmApi.restoreCookie = function() {
         // Promise is resolved regardless of whether the call succeeded.
+        // The resolution value is an error string if an error occurs.
         return new Promise(restoreCookie);
     };
     row.insertCell(0).textContent = cookie.name;
@@ -665,11 +684,11 @@ function renderCookie(cookiesOut, cookie) {
             storeId: cookie.storeId
         }, function() {
             if (chrome.runtime.lastError) {
-                alert('Failed to remove cookie because of:\n' + chrome.runtime.lastError.message);
+                resolve(chrome.runtime.lastError.message);
             } else {
-                row.classList.add('cookie-removed');
+                row.cmApi.setDeleted(true);
+                resolve();
             }
-            resolve();
         });
     }
     function restoreCookie(resolve) {
@@ -688,11 +707,11 @@ function renderCookie(cookiesOut, cookie) {
         details.storeId = cookie.storeId;
         chrome.cookies.set(details, function() {
             if (chrome.runtime.lastError) {
-                alert('Failed to save cookie because of:\n' + chrome.runtime.lastError.message);
+                resolve(chrome.runtime.lastError.message);
             } else {
-                row.classList.remove('cookie-removed');
+                row.cmApi.setDeleted(false);
+                resolve();
             }
-            resolve();
         });
     }
 }
