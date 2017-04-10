@@ -240,11 +240,9 @@ function sendRequestToSetCookies(domain, cookies) {
                 // jshint scripturl:false
             });
         }
-        cookieHeaderValues.forEach(function(cookieValue) {
-            responseHeaders.push({
-                name: 'Set-Cookie',
-                value: cookieValue,
-            });
+        responseHeaders.push({
+            name: 'Set-Cookie',
+            value: cookieHeaderValues.join('\n'),
         });
         didSetCookie = true;
         return {
