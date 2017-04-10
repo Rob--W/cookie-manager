@@ -68,7 +68,7 @@
         };
 
         getMonthLabels().forEach(function(monthLabel, i) {
-            monthInput.appendChild(new Option(monthLabel, i));
+            monthInput.appendChild(new Option(monthLabel, i + 1));
         });
         container.appendChild(d);
         document.body.appendChild(container);
@@ -82,7 +82,7 @@
         function useDateForPicker(date) {
             if (!isNaN(date.getTime())) {
                 dayInput.value = date.getDate();
-                monthInput.value = date.getMonth();
+                monthInput.value = date.getMonth() + 1;
                 yearInput.value = date.getFullYear();
                 hourInput.value = date.getHours();
                 minuteInput.value = date.getMinutes();
