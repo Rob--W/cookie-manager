@@ -1,10 +1,57 @@
 /* globals chrome */
 /* globals console */
+/* globals isPartOfDomain */
 /* globals cookieValidators */
 /* jshint browser: true */
 /* jshint esversion: 6 */
 /* exported setCookiesInPrivateMode */
 'use strict';
+
+if (typeof browser !== 'undefined') {
+    // Firefox bugs...
+    let {getAll: cookiesGetAll} = chrome.cookies;
+    let isPrivate = (details) => {
+        return details.storeId ?
+            details.storeId === 'firefox-private' :
+            chrome.extension.inIncognitoContext;
+    };
+    chrome.cookies.getAll = function(details, callback) {
+        if (!isPrivate(details) || !details.url && !details.domain) {
+            cookiesGetAll(details, callback);
+            return;
+        }
+        // Work around bugzil.la/1318948.
+        var {domain, url} = details;
+        url = url && new URL(url);
+        var allDetails = Object.assign({}, details);
+        delete allDetails.domain;
+        delete allDetails.url;
+        cookiesGetAll(allDetails, function(cookies) {
+            if (!cookies) {
+                callback(cookies);
+                return;
+            }
+            cookies = cookies.filter(function(cookie) {
+                if (url) {
+                    if (cookie.hostOnly && url.hostname !== cookie.domain)
+                        return false;
+                    if (!isPartOfDomain(cookie.domain, url.hostname))
+                        return false;
+                    if (cookie.secure && url.protocol !== 'https:')
+                        return false;
+                    if (cookie.path !== '/' && !(url.pathname + '//').startsWith(cookie.path + '/'))
+                        return false;
+                }
+                if (domain) {
+                    if (!isPartOfDomain(cookie.domain, domain))
+                        return false;
+                }
+                return true;
+            });
+            callback(cookies);
+        });
+    };
+}
 
 /**
  * Convert a cookie to a value that can be used as a value for the Set-Cookie HTTP header.
