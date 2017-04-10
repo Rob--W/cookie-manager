@@ -1,7 +1,7 @@
 {
     "name": "Cookie Manager",
     "description": "An efficient cookie manager. View, delete and search for cookies (editing will be added in the future). Designed for privacy and security aware users. Enable this extension to open the cookie manager, disable it if you are done. Firefox for Android users: tap on the circle icon in the address bar after enabling the add-on to open the cookie manager.",
-    "version": "1.1",
+    "version": "1.2",
     "manifest_version": 2,
     "permissions": [
         "cookies",
