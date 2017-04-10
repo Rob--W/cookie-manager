@@ -9,7 +9,10 @@
 
 if (typeof browser !== 'undefined') {
     // Firefox bugs...
-    let {getAll: cookiesGetAll} = chrome.cookies;
+    let {
+        getAll: cookiesGetAll,
+        getAllCookieStores: cookiesGetAllCookieStores,
+    } = chrome.cookies;
     let isPrivate = (details) => {
         return details.storeId ?
             details.storeId === 'firefox-private' :
@@ -49,6 +52,25 @@ if (typeof browser !== 'undefined') {
                 return true;
             });
             callback(cookies);
+        });
+    };
+
+    chrome.cookies.getAllCookieStores = function(callback) {
+        cookiesGetAllCookieStores(function(cookieStores) {
+            if (cookieStores) {
+                callback(cookieStores);
+                return;
+            }
+            // In Firefox for Android before version 54, chrome.cookies.getAllCookieStores
+            // fails due to the lack of tabs API support.
+            cookieStores = [{
+                id: 'firefox-default',
+                tabIds: [],
+            }, {
+                id: 'firefox-private',
+                tabIds: [],
+            }];
+            callback(cookieStores);
         });
     };
 }

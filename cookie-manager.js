@@ -314,29 +314,8 @@ Array.from(document.querySelectorAll('#editform label[for]')).forEach(function(r
 
 
 
-function getAllCookieStores(callback) {
-    chrome.cookies.getAllCookieStores(function(cookieStores) {
-        if (cookieStores) {
-            callback(cookieStores);
-            return;
-        }
-        if (typeof browser != 'undefined') {
-            // In Firefox for Android before version 54, chrome.cookies.getAllCookieStores
-            // fails due to the lack of tabs API support.
-            cookieStores = [{
-                id: 'firefox-default',
-                tabIds: [],
-            }, {
-                id: 'firefox-private',
-                tabIds: [],
-            }];
-        }
-        callback(cookieStores);
-    });
-}
-
 function updateCookieStoreIds() {
-    getAllCookieStores(function(cookieStores) {
+    chrome.cookies.getAllCookieStores(function(cookieStores) {
         var cookieJarDropdown = document.getElementById('.storeId');
         var editCoJarDropdown = document.getElementById('editform.storeId');
         var selectedValue = cookieJarDropdown.value;
@@ -439,7 +418,7 @@ function doSearch() {
     if (query.storeId !== ANY_COOKIE_STORE_ID) {
         useCookieStoreIds(query, [query.storeId]);
     } else {
-        getAllCookieStores(function(cookieStores) {
+        chrome.cookies.getAllCookieStores(function(cookieStores) {
             var cookieStoreIds = cookieStores.map(function(cookieStore) {
                 return cookieStore.id;
             });
