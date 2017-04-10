@@ -269,6 +269,7 @@ class DomainPart {
         this.domain = domain;
         this.parentDomainPart = parentDomainPart;
         this.children = [];
+        this.removedChildren = [];
 
         this.secureDomainCookies = [];
         this.insecureDomainCookies = [];
@@ -314,10 +315,15 @@ class DomainPart {
         childNode.addNode(domain, cookie);
     }
     
-    forEachBottomUp(callback) {
+    forEachBottomUp(callback, includeRemovedChildren) {
         this.children.forEach((child) => {
-            child.forEachBottomUp(callback);
+            child.forEachBottomUp(callback, includeRemovedChildren);
         });
+        if (includeRemovedChildren) {
+            this.removedChildren.forEach((child) => {
+                child.forEachBottomUp(callback, includeRemovedChildren);
+            });
+        }
         callback(this);
     }
 
@@ -328,6 +334,7 @@ class DomainPart {
         var i = this.parentDomainPart.children.indexOf(this);
         if (i >= 0) {
             this.parentDomainPart.children.splice(i, 1);
+            this.parentDomainPart.removedChildren.push(this);
             this.removeNodeIfLeaf();
         }
     }
@@ -359,11 +366,11 @@ class DomainPart {
     getUnprocessedCookies() {
         var cookies = [];
         this.forEachBottomUp((node) => {
-            arrayAppend(cookies, this.secureDomainCookies);
-            arrayAppend(cookies, this.insecureDomainCookies);
-            arrayAppend(cookies, this.secureHostOnlyCookies);
-            arrayAppend(cookies, this.insecureHostOnlyCookies);
-        });
+            arrayAppend(cookies, node.secureDomainCookies);
+            arrayAppend(cookies, node.insecureDomainCookies);
+            arrayAppend(cookies, node.secureHostOnlyCookies);
+            arrayAppend(cookies, node.insecureHostOnlyCookies);
+        }, true);
         return cookies;
     }
 
