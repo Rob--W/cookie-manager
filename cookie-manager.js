@@ -119,7 +119,7 @@ function modifyCookieRows(shouldRestore) {
         updateButtonView();
         errors = errors.filter(function(error) { return error; });
         if (errors.length) {
-            alert('Failed to ' + action + ' some cookies because of:\n' + errors.join('\n'));
+            alert('Failed to ' + action + ' some cookies:\n' + errors.join('\n'));
         }
     });
 }

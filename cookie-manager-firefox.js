@@ -570,7 +570,8 @@ function setCookiesInPrivateMode(cookies) {
         if (unprocessedCookies.length) {
             results.errorMessage =
                 'Cannot modify ' + unprocessedCookies.length +
-                ' private cookies because the web servers are not reachable.';
+                ' private cookies because the sites are not reachable.' +
+                ' Try to temporarily disable Tracking Protection at Settings > Privacy.';
         }
         return results;
     });
