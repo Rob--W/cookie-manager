@@ -4,6 +4,7 @@
     "version": "1.2",
     "manifest_version": 2,
     "permissions": [
+        "contextualIdentities",
         "cookies",
         "webRequest",
         "webRequestBlocking",

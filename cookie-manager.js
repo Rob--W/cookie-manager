@@ -1,5 +1,6 @@
 /* globals chrome, alert */
 /* globals Promise */
+/* globals browser */
 /* globals console */
 /* globals setCookiesInPrivateMode */
 /* jshint browser: true */
@@ -316,9 +317,67 @@ Array.from(document.querySelectorAll('#editform label[for]')).forEach(function(r
 });
 
 
+// Return a mapping from a cookieStoreId to a human-readable name.
+function getContextualIdentityNames() {
+    // contextualIdentities is Firefox-only.
+    var contextualIdNameMap = {};
+    if (typeof browser !== 'object' || !browser.contextualIdentities) {
+        return Promise.resolve(contextualIdNameMap);
+    }
+    return browser.contextualIdentities.query({}).then(function(contextualIdentities) {
+        var byName = Object.create(null);
+        contextualIdentities.forEach(function(contextualIdentity) {
+            var name = contextualIdentity.name;
+            contextualIdNameMap[contextualIdentity.cookieStoreId] = name;
+            (byName[name] || (byName[name] = [])).push(contextualIdentity);
+        });
+        // Create more specific names if necessary.
+        Object.values(byName).forEach(function(contextualIdentitySubset) {
+            if (contextualIdentitySubset.length < 2) {
+                return;
+            }
+            var nameGenerators = [
+                // First try to create a unique name with the icon.
+                function(contextualIdentity) {
+                    return contextualIdentity.name + ' (' + contextualIdentity.icon + ')';
+                },
+                // If the icon is not unique, try a unique color.
+                function(contextualIdentity) {
+                    return contextualIdentity.name + ' (' + contextualIdentity.color + ')';
+                },
+                // If the color is not unique, use both.
+                function(contextualIdentity) {
+                    return contextualIdentity.name + ' (' + contextualIdentity.icon + ', ' + contextualIdentity.color + ')';
+                },
+            ];
+            var uniqNames = [];
+            for (var i = 0; i < contextualIdentitySubset.length; ++i) {
+                var contextualIdentity = contextualIdentitySubset[i];
+                var name = nameGenerators[0](contextualIdentity);
+                if (nameGenerators.length && uniqNames.includes(name)) {
+                    // Not unique. Restart the loop with the next name generator.
+                    uniqNames.length = 0;
+                    i = 0;
+                } else {
+                    contextualIdNameMap[contextualIdentity.cookieStoreId] = name;
+                    uniqNames.push(name);
+                }
+            }
+        });
+        return contextualIdNameMap;
+    });
+}
 
 function updateCookieStoreIds() {
-    chrome.cookies.getAllCookieStores(function(cookieStores) {
+    Promise.all([
+        new Promise(function(resolve) {
+            chrome.cookies.getAllCookieStores(resolve);
+        }),
+        getContextualIdentityNames(),
+    ]).then(function(args) {
+        var cookieStores = args[0];
+        var contextualIdNameMap = args[1];
+
         var cookieJarDropdown = document.getElementById('.storeId');
         var editCoJarDropdown = document.getElementById('editform.storeId');
         var selectedValue = cookieJarDropdown.value;
@@ -328,8 +387,9 @@ function updateCookieStoreIds() {
         editCoJarDropdown.textContent = '';
         // TODO: Do something with cookieStores[*].tabIds ?
         cookieStores.forEach(function(cookieStore) {
-            cookieJarDropdown.appendChild(new Option(storeIdToHumanName(cookieStore.id), cookieStore.id));
-            editCoJarDropdown.appendChild(new Option(storeIdToHumanName(cookieStore.id), cookieStore.id));
+            var option = new Option(storeIdToHumanName(cookieStore.id, contextualIdNameMap), cookieStore.id);
+            cookieJarDropdown.appendChild(option.cloneNode(true));
+            editCoJarDropdown.appendChild(option.cloneNode(true));
         });
         cookieJarDropdown.value = selectedValue;
         editCoJarDropdown.value = editValue;
@@ -343,7 +403,7 @@ function updateCookieStoreIds() {
     });
 }
 
-function storeIdToHumanName(storeId) {
+function storeIdToHumanName(storeId, contextualIdNameMap) {
     // Chrome
     // These values are not documented, but they appear to be hard-coded in
     // https://chromium.googlesource.com/chromium/src/+/3c7170a0bed4bf8cc9b0a95f5066100bec0f15bb/chrome/browser/extensions/api/cookies/cookies_helpers.cc#43
@@ -365,6 +425,10 @@ function storeIdToHumanName(storeId) {
     }
     var tmp = /^firefox-container-(.*)$/.exec(storeId);
     if (tmp) {
+        var contextualIdName = contextualIdNameMap[storeId];
+        if (contextualIdName) {
+            return 'Cookie jar: ' +  contextualIdName + ' (Container Tab)';
+        }
         return 'Cookie jar: Container ' + tmp[1];
     }
     return 'Cookie jar: ID ' + storeId;
