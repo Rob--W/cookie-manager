@@ -732,23 +732,10 @@ function renderCookie(cookiesOut, cookie) {
     row.insertCell(5).textContent = expiryInfo;
 
     function deleteCookie(resolve) {
-        var details = {
-            url: cookie.url,
-            name: cookie.name,
-            storeId: cookie.storeId
-        };
-        if (cookie.storeId === 'firefox-private') {
-            // cookie-manager-firefox.js uses this to efficiently implement cookie removals.
-            // (without this, the implementation needs to use getAll to look up cookies).
-            Object.defineProperty(details, '__raw_cookie__', {
-                value: cookie,
-                // Note: non-enumerable properties are not seen by the schema validator, as desired.
-            });
-        }
-        // NOTE: This method may remove more than one cookie.
-        // Due to a limitation in the cookies.remove API, it is not possible to
-        // only delete a (sub)domain cookie or host-only cookie.
-        chrome.cookies.remove(details, function() {
+        var details = getDetailsForCookiesSetAPI();
+        details.value = '';
+        details.expirationDate = 0;
+        chrome.cookies.set(details, function() {
             if (chrome.runtime.lastError) {
                 resolve(chrome.runtime.lastError.message);
             } else {
@@ -758,6 +745,17 @@ function renderCookie(cookiesOut, cookie) {
         });
     }
     function restoreCookie(resolve) {
+        var details = getDetailsForCookiesSetAPI();
+        chrome.cookies.set(details, function() {
+            if (chrome.runtime.lastError) {
+                resolve(chrome.runtime.lastError.message);
+            } else {
+                row.cmApi.setDeleted(false);
+                resolve();
+            }
+        });
+    }
+    function getDetailsForCookiesSetAPI() {
         var details = {};
         details.url = cookie.url;
         details.name = cookie.name;
@@ -771,14 +769,7 @@ function renderCookie(cookiesOut, cookie) {
         if (cookie.sameSite) details.sameSite = cookie.sameSite;
         if (!cookie.session) details.expirationDate = cookie.expirationDate;
         details.storeId = cookie.storeId;
-        chrome.cookies.set(details, function() {
-            if (chrome.runtime.lastError) {
-                resolve(chrome.runtime.lastError.message);
-            } else {
-                row.cmApi.setDeleted(false);
-                resolve();
-            }
-        });
+        return details;
     }
 }
 function cookieToUrl(cookie) {
