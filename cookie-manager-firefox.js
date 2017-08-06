@@ -7,7 +7,11 @@
 /* exported setCookiesInPrivateMode */
 'use strict';
 
-if (typeof browser !== 'undefined') {
+// Firefox-specific patches. Only needed before Firefox 56.
+// The last private cookie bug have been fixed in Firefox 56 (bugzil.la/1354229).
+// <applet> was removed from Firefox 56 (bugzil.la/1279218).
+// Use this to detect engines that are based on Firefox 56.
+if (typeof browser !== 'undefined' && typeof HTMLAppletElement !== 'undefined') {
     // Firefox bugs...
     let {
         getAll: cookiesGetAll,
