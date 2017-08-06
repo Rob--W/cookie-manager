@@ -762,7 +762,7 @@ function renderCookie(cookiesOut, cookie) {
         details.url = cookie.url;
         details.name = cookie.name;
         details.value = cookie.value;
-        if (!details.hostOnly) {
+        if (!cookie.hostOnly) {
             details.domain = cookie.domain;
         }
         details.path = cookie.path;
