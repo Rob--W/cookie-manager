@@ -12,11 +12,29 @@ if (typeof browser !== 'undefined') {
     let {
         getAll: cookiesGetAll,
         getAllCookieStores: cookiesGetAllCookieStores,
+        set: cookiesSet,
+        remove: cookiesRemove,
     } = chrome.cookies;
     let isPrivate = (details) => {
         return details.storeId ?
             details.storeId === 'firefox-private' :
             chrome.extension.inIncognitoContext;
+    };
+    let withLastError = function(callback, error) {
+        if (callback) {
+            let chromeRuntime = chrome.runtime;
+            try {
+                chrome.runtime = Object.create(chrome.runtime, {
+                    lastError: { value: error },
+                });
+                callback();
+            } finally {
+                chrome.runtime = chromeRuntime;
+            }
+        } else {
+            // I always set a callback, but throw just in case I don't to not hide errors.
+            throw error;
+        }
     };
     chrome.cookies.getAll = function(details, callback) {
         if (!isPrivate(details) || !details.url && !details.domain) {
@@ -72,6 +90,58 @@ if (typeof browser !== 'undefined') {
             }];
             callback(cookieStores);
         });
+    };
+
+    let pendingPrivateCookieRequests = [];
+    let hasNoPendingCookieRequests = true;
+    let queueRequestToSetCookies = function(cookie, callback = function() {}) {
+        // Queue cookie requests so that when chrome.cookies.set is called in a loop,
+        // that similar cookies are grouped together in a single request.
+        pendingPrivateCookieRequests.push([cookie, callback]);
+        if (hasNoPendingCookieRequests) {
+            hasNoPendingCookieRequests = false;
+            Promise.resolve().then(function() {
+                hasNoPendingCookieRequests = true;
+                var requests = pendingPrivateCookieRequests.splice(0);
+                var cookies = requests.map(([cookie, callback]) => cookie);
+                var callbacks = requests.map(([cookie, callback]) => callback);
+                setCookiesInPrivateMode(cookies).then(function(results) {
+                    var error = results.errorMessage && new Error(results.errorMessage);
+                    callbacks.forEach(function(callback, i) {
+                        if (results[i]) {
+                            callback();
+                        } else {
+                            withLastError(callback, error || {message: 'Unknown error'});
+                        }
+                    });
+                });
+            });
+        }
+    };
+
+    // It's assumed that the |cookie| parameter is not modified by the caller after calling us.
+    chrome.cookies.set = function(cookie, callback) {
+        if (!isPrivate(cookie)) {
+            cookiesSet(cookie, callback);
+            return;
+        }
+        queueRequestToSetCookies(cookie, callback);
+    };
+
+    chrome.cookies.remove = function(details, callback) {
+        if (!isPrivate(details)) {
+            cookiesRemove(details, callback);
+            return;
+        }
+        var cookie = Object.assign({}, details.__raw_cookie__);
+        if (!cookie.url) {
+            withLastError(callback, new Error('details.__raw_cookie__.url is empty'));
+            return;
+        }
+        cookie.session = false;
+        cookie.expirationDate = 0;
+        cookie.value = '';
+        queueRequestToSetCookies(cookie, callback);
     };
 }
 
@@ -512,11 +582,11 @@ class DomainPart {
  */
 function setCookiesInPrivateMode(cookies) {
     if (!chrome.extension.inIncognitoContext) {
-        return Promise.resolve({
+        return Promise.resolve(Object.assign(cookies.map(() => false), {
             errorMessage: 'Cannot modify ' + cookies.length +
                 ' private cookies due to a Firefox bug (bugzil.la/1318948).' +
                 ' Please open the cookie manager in private browsing mode and try again.',
-        });
+        }));
     }
     cookies.forEach(function(cookie) {
         if (cookie.storeId !== 'firefox-private') {

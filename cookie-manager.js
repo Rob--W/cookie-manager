@@ -1,8 +1,8 @@
 /* globals chrome, alert */
 /* globals Promise */
+/* globals Set */
 /* globals browser */
 /* globals console */
-/* globals setCookiesInPrivateMode */
 /* jshint browser: true */
 'use strict';
 
@@ -83,42 +83,21 @@ function modifyCookieRows(shouldRestore) {
     }
     // Promises that always resolve. Upon success, a void value. Otherwise an error string.
     var promises = [];
-    var privateFirefoxRows = [];
-    var privateFirefoxCookies = [];
     rows.forEach(function(row) {
-        if (row.cmApi.rawCookie.storeId === 'firefox-private') {
-            var cookie = Object.assign({}, row.cmApi.rawCookie);
-            if (!shouldRestore) {
-                cookie.session = false;
-                cookie.expirationDate = 0;
-                cookie.value = '';
-            }
-            privateFirefoxRows.push(row);
-            privateFirefoxCookies.push(cookie);
-            return;
-        }
         if (shouldRestore) {
             promises.push(row.cmApi.restoreCookie());
         } else {
             promises.push(row.cmApi.deleteCookie());
         }
     });
-    if (privateFirefoxCookies.length) {
-        promises.unshift(setCookiesInPrivateMode(privateFirefoxCookies).then(function(results) {
-            if (results.errorMessage) {
-                return results.errorMessage;
-            }
-            results.forEach(function(success, i) {
-                if (success) {
-                    privateFirefoxRows[i].cmApi.setDeleted(!shouldRestore);
-                }
-            });
-        }));
-    }
 
     Promise.all(promises).then(function(errors) {
         updateButtonView();
         errors = errors.filter(function(error) { return error; });
+        if (errors.length > 1) {
+            // De-duplication of errors.
+            errors = Array.from(new Set(errors));
+        }
         if (errors.length) {
             alert('Failed to ' + action + ' some cookies:\n' + errors.join('\n'));
         }
@@ -210,13 +189,6 @@ document.getElementById('editform').onsubmit = function(event) {
         }
     }
     cookie.storeId = document.getElementById('editform.storeId').value;
-
-    if (cookie.storeId === 'firefox-private') {
-        setCookiesInPrivateMode([cookie]).then(function(results) {
-            onCookieSet(results.errorMessage);
-        });
-        return;
-    }
 
     chrome.cookies.set(cookie, function() {
         onCookieSet(chrome.runtime.lastError && chrome.runtime.lastError.message);
@@ -760,11 +732,23 @@ function renderCookie(cookiesOut, cookie) {
     row.insertCell(5).textContent = expiryInfo;
 
     function deleteCookie(resolve) {
-        chrome.cookies.remove({
+        var details = {
             url: cookie.url,
             name: cookie.name,
             storeId: cookie.storeId
-        }, function() {
+        };
+        if (cookie.storeId === 'firefox-private') {
+            // cookie-manager-firefox.js uses this to efficiently implement cookie removals.
+            // (without this, the implementation needs to use getAll to look up cookies).
+            Object.defineProperty(details, '__raw_cookie__', {
+                value: cookie,
+                // Note: non-enumerable properties are not seen by the schema validator, as desired.
+            });
+        }
+        // NOTE: This method may remove more than one cookie.
+        // Due to a limitation in the cookies.remove API, it is not possible to
+        // only delete a (sub)domain cookie or host-only cookie.
+        chrome.cookies.remove(details, function() {
             if (chrome.runtime.lastError) {
                 resolve(chrome.runtime.lastError.message);
             } else {
