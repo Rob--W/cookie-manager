@@ -6,6 +6,7 @@
     "permissions": [
         "contextualIdentities",
         "cookies",
+        "storage",
         "webRequest",
         "webRequestBlocking",
         "*://*/*"
