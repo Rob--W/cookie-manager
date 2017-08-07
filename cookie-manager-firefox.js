@@ -17,7 +17,6 @@ if (typeof browser !== 'undefined' && typeof HTMLAppletElement !== 'undefined') 
         getAll: cookiesGetAll,
         getAllCookieStores: cookiesGetAllCookieStores,
         set: cookiesSet,
-        remove: cookiesRemove,
     } = chrome.cookies;
     let isPrivate = (details) => {
         return details.storeId ?
@@ -129,22 +128,6 @@ if (typeof browser !== 'undefined' && typeof HTMLAppletElement !== 'undefined') 
             cookiesSet(cookie, callback);
             return;
         }
-        queueRequestToSetCookies(cookie, callback);
-    };
-
-    chrome.cookies.remove = function(details, callback) {
-        if (!isPrivate(details)) {
-            cookiesRemove(details, callback);
-            return;
-        }
-        var cookie = Object.assign({}, details.__raw_cookie__);
-        if (!cookie.url) {
-            withLastError(callback, new Error('details.__raw_cookie__.url is empty'));
-            return;
-        }
-        cookie.session = false;
-        cookie.expirationDate = 0;
-        cookie.value = '';
         queueRequestToSetCookies(cookie, callback);
     };
 }
