@@ -7,6 +7,7 @@
         "contextualIdentities",
         "cookies",
         "storage",
+        "tabs",
         "webRequest",
         "webRequestBlocking",
         "*://*/*"
@@ -22,11 +23,8 @@
         "48": "icons/48.png",
         "96": "icons/96.png"
     },
-    "page_action": {
-        "default_icon": {
-            "16": "icons/16.png",
-            "32": "icons/32.png"
-        }
+    "browser_action": {
+        "default_title": "Open Cookie Manager"
     },
     "applications": {
         "gecko": {

@@ -24,15 +24,51 @@ if (!chrome.tabs) {
     });
 }
 
+if (chrome.browserAction) {
+    if (chrome.browserAction.setIcon) {
+        // Not supported yet on Android.
+        chrome.browserAction.setIcon({
+            path: {
+                16: 'icons/16.png',
+                32: 'icons/32.png',
+            },
+        });
+    }
+    chrome.browserAction.onClicked.addListener(function(tab) {
+        chrome.tabs.query({
+            windowId: tab.windowId,
+            // Cannot filter on extension URLs before Firefox 56, 
+            // see https:bugzil.la/1269341.
+            title: 'Cookie Manager',
+        }, function(tabs) {
+            tabs = tabs.filter(function(tab) {
+                return tab.url.startsWith(location.origin);
+            });
+            if (tabs.some(function(tab) { return tab.active; })) {
+                // Current tab is already the cookie manager.
+                return;
+            }
+            if (tabs.length) {
+                // Focus the first cookie manager tab.
+                chrome.tabs.update(tabs[0].id, {
+                    active: true,
+                });
+                return;
+            }
+            chrome.tabs.create({
+                url: 'cookie-manager.html',
+                windowId: tab.windowId,
+                index: tab.index + 1,
+            });
+        });
+    });
+}
+
 function onGotStorage(items) {
     // By default, auto-start.
     if (!items || items.autostart !== false) {
         chrome.tabs.create({
             url: 'cookie-manager.html',
-        }, function() {
-            window.close();
         });
-    } else {
-        window.close();
     }
 }
