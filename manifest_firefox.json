@@ -25,6 +25,12 @@
     "browser_action": {
         "default_title": "Open Cookie Manager"
     },
+    "page_action": {
+        "default_icon": {
+            "48": "icons/48.png",
+            "96": "icons/96.png"
+        }
+    },
     "applications": {
         "gecko": {
             "id": "cookie-manager@robwu.nl"
