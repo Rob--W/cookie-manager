@@ -4,8 +4,11 @@
     "version": "1.2",
     "manifest_version": 2,
     "permissions": [
+        "contextualIdentities",
         "cookies",
         "storage",
+        "webRequest",
+        "webRequestBlocking",
         "*://*/*"
     ],
     "options_ui": {
@@ -21,5 +24,10 @@
     },
     "browser_action": {
         "default_title": "Open Cookie Manager"
+    },
+    "applications": {
+        "gecko": {
+            "id": "cookie-manager@robwu.nl"
+        }
     }
 }
