@@ -1,4 +1,4 @@
-SOURCES = $(wildcard cookie-manager.* cookie-manager-firefox.js icons/*.png) manifest.json background.js
+SOURCES = $(wildcard cookie-manager.* cookie-manager-firefox.js icons/*.png) manifest.json background.js datetime-local-polyfill.js options.js
 
 CHROME_ZIP = cookie-manager-chrome.zip
 FIREFOX_ZIP = cookie-manager-firefox.zip
