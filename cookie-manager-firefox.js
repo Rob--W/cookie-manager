@@ -4,7 +4,6 @@
 /* globals cookieValidators */
 /* jshint browser: true */
 /* jshint esversion: 6 */
-/* exported setCookiesInPrivateMode */
 'use strict';
 
 // Firefox-specific patches. Only needed before Firefox 56.
