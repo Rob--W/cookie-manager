@@ -12,7 +12,7 @@ $(CHROME_ZIP): $(SOURCES) manifest.json
 	7z u $@ $(SOURCES) manifest.json
 
 $(FIREFOX_DIR): ${SOURCES} manifest_firefox.json
-	[ ! -d $(FIREFOX_DIR) ] && mkdir $(FIREFOX_DIR)
+	[ -d $(FIREFOX_DIR) ] || mkdir $(FIREFOX_DIR)
 	rsync -Rt $(SOURCES) $(FIREFOX_DIR)/
 	cp --preserve=timestamps manifest_firefox.json $(FIREFOX_DIR)/manifest.json
 
