@@ -229,7 +229,7 @@ function sendRequestToSetCookies(domain, cookies) {
         requestFilter.urls.push(url.replace('http', 'https'));
     }
 
-    chrome.webRequest.onBeforeRequest.addListener(onBeforeRequest, requestFilter);
+    chrome.webRequest.onBeforeRequest.addListener(onBeforeRequest, requestFilter, ['blocking']);
     chrome.webRequest.onBeforeSendHeaders.addListener(
         onBeforeSendHeaders, requestFilter, ['requestHeaders', 'blocking']);
     chrome.webRequest.onHeadersReceived.addListener(
