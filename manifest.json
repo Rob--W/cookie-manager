@@ -7,7 +7,6 @@
         "contextualIdentities",
         "cookies",
         "storage",
-        "tabs",
         "webRequest",
         "webRequestBlocking",
         "*://*/*"

@@ -1,4 +1,5 @@
 /* globals chrome */
+/* globals Promise */
 /* jshint browser: true */
 'use strict';
 
@@ -34,16 +35,30 @@ if (chrome.browserAction) {
             },
         });
     }
-    chrome.browserAction.onClicked.addListener(function(tab) {
-        chrome.tabs.query({
-            windowId: tab.windowId,
-            // Cannot filter on extension URLs before Firefox 56, 
-            // see https:bugzil.la/1269341.
-            title: 'Cookie Manager',
-        }, function(tabs) {
-            tabs = tabs.filter(function(tab) {
-                return tab.url.startsWith(location.origin);
+    chrome.browserAction.onClicked.addListener(function(activeTab) {
+        // Note: Using chrome.extension.getViews is a very good way to find
+        // extension tabs. chrome.tabs.query cannot be used here, because
+        // before Firefox 56, extension URLs cannot be filtered
+        // (https://bugzil.la/1269341).
+        Promise.all(
+            chrome.extension.getViews({ type: 'tab' })
+            .map(function(win) {
+                return new Promise(function(resolve) {
+                    if (win.location.pathname === '/cookie-manager.html') {
+                        win.chrome.tabs.getCurrent(function(tab) {
+                            resolve(tab);
+                        });
+                    }
+                }).catch(function() {
+                    // Never reject the promise.
+                });
+            })
+        ).then(function(tabs) {
+            // Exclude missing tabs and tabs from other windows.
+            return tabs.filter(function(tab) {
+                return tab && tab.windowId === activeTab.windowId;
             });
+        }).then(function(tabs) {
             if (tabs.some(function(tab) { return tab.active; })) {
                 // Current tab is already the cookie manager.
                 return;
@@ -57,8 +72,8 @@ if (chrome.browserAction) {
             }
             chrome.tabs.create({
                 url: 'cookie-manager.html',
-                windowId: tab.windowId,
-                index: tab.index + 1,
+                windowId: activeTab.windowId,
+                index: activeTab.index + 1,
             });
         });
     });
