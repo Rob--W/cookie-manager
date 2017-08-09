@@ -354,6 +354,54 @@ function arrayAppend(arrayOut, arrayIn) {
     }
 }
 
+var MAX_TEMPORARY_TABS = 20;
+var _temporaryTabCount = 0;
+var _temporaryTabQueue = [];
+function openTemporaryHiddenTab(url, callback) {
+    // See similar assertion near sendFirstPartyRequest.
+    console.assert(chrome.extension.inIncognitoContext, 'inIncognitoContext === true');
+
+    if (_temporaryTabCount === MAX_TEMPORARY_TABS) {
+        _temporaryTabQueue.push([url, callback]);
+        return;
+    }
+
+    ++_temporaryTabCount;
+
+    chrome.tabs.onRemoved.addListener(tabsOnRemoved);
+
+    var createdTabId;
+
+    chrome.tabs.create({
+        url: url,
+        active: false,
+    }, function(tab) {
+        callback(tab);
+
+        // This is not expected to happen, but just in case:
+        if (tab) {
+            createdTabId = tab.id;
+        } else {
+            tabIsRemoved();
+        }
+    });
+
+    function tabsOnRemoved(removedTabId) {
+        if (removedTabId === createdTabId) {
+            tabIsRemoved();
+        }
+    }
+    function tabIsRemoved() {
+        chrome.tabs.onRemoved.removeListener(tabsOnRemoved);
+        --_temporaryTabCount;
+        if (_temporaryTabQueue.length) {
+            var [url, callback] = _temporaryTabQueue.shift();
+            openTemporaryHiddenTab(url, callback);
+        }
+
+    }
+}
+
 /**
  * Set the given cookies in a request to the given domain.
  * All cookies must be part of the given domain and storeId.
@@ -457,12 +505,7 @@ function sendRequestToSetCookies(domain, cookies) {
             }
         });
 
-        // TODO: Switch to iframes instead?
-        // (but that would likely fail if 3rd-party cookies are blocked).
-        chrome.tabs.create({
-            url: url,
-            active: false,
-        }, function(tab) {
+        openTemporaryHiddenTab(url, function(tab) {
             // Also set in onBeforeRequest, but set it here too in case the request never succeeds.
             affectedTabId = tab.id;
 
