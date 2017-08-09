@@ -107,7 +107,9 @@ if (typeof browser !== 'undefined') {
         pendingPrivateCookieRequests.push([cookie, callback]);
         if (hasNoPendingCookieRequests) {
             hasNoPendingCookieRequests = false;
-            Promise.resolve().then(function() {
+            // It is important that getConsentForRequests returns a promise, because that
+            // ensures that multiple chrome.cookies.set calls in a loop are grouped together.
+            getConsentForRequests().then(function() {
                 hasNoPendingCookieRequests = true;
                 var requests = pendingPrivateCookieRequests.splice(0);
                 var cookies = requests.map(([cookie, callback]) => cookie);
@@ -122,6 +124,15 @@ if (typeof browser !== 'undefined') {
                         }
                     });
                 });
+            }, function(error) {
+                hasNoPendingCookieRequests = true;
+                var requests = pendingPrivateCookieRequests.splice(0);
+                var callbacks = requests.map(([cookie, callback]) => callback);
+                withLastError(function() {
+                    callbacks.forEach(function(callback) {
+                        callback();
+                    });
+                }, error);
             });
         }
     };
@@ -279,6 +290,47 @@ function checkThirdPartyCookiesEnabled(isEnabled, isDisabled) {
 
     cookiesSet(dummyCookie, function() {
         img.src = dummyCookie.url;
+    });
+}
+
+function getConsentForRequests() {
+    return new Promise(function(resolve, reject) {
+        var defaultSettings = {
+            consentedToRequests: false,
+            consentedToTabs: false,
+        };
+        chrome.storage.local.get(defaultSettings, function(items) {
+            items = items || defaultSettings;
+
+            var needsFirstPartyRequest = runWithoutPrivateCookieBugs.needsFirstPartyRequest;
+            var needsConsent = !items.consentedToRequests ||
+                (needsFirstPartyRequest && !items.consentedToTabs);
+            if (!needsConsent) {
+                resolve();
+                return;
+            }
+            var consentMessage =
+                'Private cookies cannot directly be modified because of browser bugs.\n' +
+                'Cookies can be modified anyway by sending a HTTP request to the sites of the cookies.\n' +
+                (needsFirstPartyRequest ?
+                    'Because third-party cookies are blocked, new tabs need to be opened.\n' : '') +
+                '\n' +
+                'Do you want to allow the Cookie Manager to send requests to modify cookies?';
+            if (window.confirm(consentMessage)) {
+                var newItems = {
+                    consentedToRequests: true,
+                };
+                if (needsFirstPartyRequest) {
+                    newItems.consentedToTabs = true;
+                }
+                chrome.storage.local.set(newItems, function() {
+                    resolve();
+                });
+            } else {
+                reject(new Error('Cannot modify private cookies because of browser bugs, ' +
+                    'and you did not give the permission to work around these bugs.'));
+            }
+        });
     });
 }
 
