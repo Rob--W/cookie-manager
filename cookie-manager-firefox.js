@@ -107,6 +107,23 @@ if (typeof browser !== 'undefined') {
         pendingPrivateCookieRequests.push([cookie, callback]);
         if (hasNoPendingCookieRequests) {
             hasNoPendingCookieRequests = false;
+            if (!chrome.extension.inIncognitoContext) {
+                Promise.resolve().then(function() {
+                    hasNoPendingCookieRequests = true;
+                    var requests = pendingPrivateCookieRequests.splice(0);
+                    var callbacks = requests.map(([cookie, callback]) => callback);
+                    var error = new Error(
+                        'Cannot modify ' + requests.length +
+                        ' private cookies due to browser bugs.' +
+                        ' Please open the Cookie Manager in private browsing mode and try again.');
+                    withLastError(function() {
+                        callbacks.forEach(function(callback) {
+                            callback();
+                        });
+                    }, error);
+                });
+                return;
+            }
             // It is important that getConsentForRequests returns a promise, because that
             // ensures that multiple chrome.cookies.set calls in a loop are grouped together.
             getConsentForRequests().then(function() {
@@ -900,11 +917,8 @@ class DomainPart {
  */
 function setCookiesInPrivateMode(cookies) {
     if (!chrome.extension.inIncognitoContext) {
-        return Promise.resolve(Object.assign(cookies.map(() => false), {
-            errorMessage: 'Cannot modify ' + cookies.length +
-                ' private cookies due to a Firefox bug (bugzil.la/1318948).' +
-                ' Please open the cookie manager in private browsing mode and try again.',
-        }));
+        // Callers should ensure that we are in private browsing mode.
+        throw new Error('Attempted to set private cookies in non-private browsing mode!');
     }
     cookies.forEach(function(cookie) {
         if (cookie.storeId !== 'firefox-private') {
