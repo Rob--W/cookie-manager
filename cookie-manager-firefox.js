@@ -569,7 +569,7 @@ function sendRequestToSetCookies(domain, cookies) {
         });
     }
 
-    function sendFirstPartyRequest(resolve) {
+    function sendFirstPartyRequest(resolve, reject) {
         // Open incongito tab in current window to trigger request.
         // Without an explicit windowId, the tabs.create API opens a tab in the current window.
         // The caller ensures that the current window is an incognito window.
@@ -607,7 +607,11 @@ function sendRequestToSetCookies(domain, cookies) {
             }
         });
 
-        openTemporaryHiddenTab(url, function(tab) {
+        openTemporaryHiddenTab(url, function(tab, error) {
+            if (error) {
+                reject(error);
+                return;
+            }
             // Also set in onBeforeRequest, but set it here too in case the request never succeeds.
             affectedTabId = tab.id;
 
