@@ -569,6 +569,13 @@ function sendRequestToSetCookies(domain, cookies) {
             resolve();
         }, requestFilter);
 
+        // This happens when the server responds with a redirect, and we rewrite it to a JS-URL.
+        // webRequest.onErrorOccurred is not triggered.
+        addListener(chrome.webNavigation.onErrorOccurred, function(details) {
+            if (details.tabId !== affectedTabId) return;
+            resolve();
+        });
+
         var shouldRemoveTab = false;
         cleanupFunctions.push(function() {
             if (affectedTabId) {

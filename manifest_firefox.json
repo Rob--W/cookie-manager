@@ -7,6 +7,7 @@
         "contextualIdentities",
         "cookies",
         "storage",
+        "webNavigation",
         "webRequest",
         "webRequestBlocking",
         "*://*/*"
