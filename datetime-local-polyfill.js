@@ -58,12 +58,12 @@
         };
         d.querySelector('.datetime-local-clear').onclick = function(event) {
             event.preventDefault();
-            input.value = '';
+            setInputValue('');
             hideDatePicker();
         };
         d.onsubmit = function(event) {
             event.preventDefault();
-            input.value = uiDateAsValue();
+            setInputValue(uiDateAsValue());
             hideDatePicker();
         };
 
@@ -78,6 +78,15 @@
         dayInput.focus();
         useDateForPicker(new Date(input.value));
         window.addEventListener('keydown', onKeyDown, true);
+
+        function setInputValue(value) {
+            if (input.value !== value) {
+                input.value = value;
+                input.dispatchEvent(new CustomEvent('change', {
+                    bubbles: true,
+                }));
+            }
+        }
 
         function useDateForPicker(date) {
             if (!isNaN(date.getTime())) {
