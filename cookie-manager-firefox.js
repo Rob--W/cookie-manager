@@ -313,8 +313,12 @@ function getConsentForRequests() {
                 'Private cookies cannot directly be modified because of browser bugs.\n' +
                 'Cookies can be modified anyway by sending a HTTP request to the sites of the cookies.\n' +
                 (needsFirstPartyRequest ?
-                    'Because third-party cookies are blocked, new tabs need to be opened.\n' : '') +
-                '\n' +
+                    'Because third-party cookies are blocked, new tabs need to be opened.' :
+                    // The following message is only true for Firefox 56 with default settings.
+                    // If the user enables FPI, then we can usually not even work around the bug,
+                    // except under specific circumstances (such as in the TOR browser).
+                    'The last bug (bug 1354229) has been fixed in Firefox 56.') +
+                '\n\n' +
                 'Do you want to allow the Cookie Manager to send requests to modify cookies?';
             if (window.confirm(consentMessage)) {
                 var newItems = {
