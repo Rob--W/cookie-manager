@@ -10,6 +10,9 @@ You can also turn off the automatic opening, and manually open the cookie
 manager by clicking on the extension button in the toolbar (desktop) or the
 Cookie Manager menu item (Firefox for Android 55+).
 
+Cookie Manager is created by Rob Wu <rob@robwu.nl> (https://robwu.nl/).
+If you have suggestions or questions, open an issue at https://github.com/Rob--W/cookie-manager/issues or send me a mail.
+
 ## Supported features
 
 - Viewing all cookies
