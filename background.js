@@ -1,5 +1,7 @@
 /* globals chrome */
+/* globals console */
 /* globals Promise */
+/* globals Set */
 /* jshint browser: true */
 'use strict';
 
@@ -75,6 +77,26 @@ if (chrome.browserAction) {
                 url: 'cookie-manager.html',
                 windowId: activeTab.windowId,
                 index: activeTab.index + 1,
+            });
+        });
+    });
+}
+
+if (chrome.tabs) {
+    chrome.runtime.onConnect.addListener(function(port) {
+        console.assert(port.name === 'kill-tabs-on-unload');
+        var tabIds = new Set();
+        port.onMessage.addListener(function(msg) {
+            if (msg.createdTabId) {
+                tabIds.add(msg.createdTabId);
+            }
+            if (msg.removedTabId) {
+                tabIds.delete(msg.removedTabId);
+            }
+        });
+        port.onDisconnect.addListener(function() {
+            tabIds.forEach(function(tabId) {
+                chrome.tabs.remove(tabId);
             });
         });
     });

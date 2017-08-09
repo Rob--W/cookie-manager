@@ -429,6 +429,7 @@ function arrayAppend(arrayOut, arrayIn) {
 
 var MAX_TEMPORARY_TABS = 20;
 var _temporaryTabCount = 0;
+var _temporaryTabPort = null;
 var _temporaryTabQueue = [];
 function openTemporaryHiddenTab(url, callback) {
     // See similar assertion near sendFirstPartyRequest.
@@ -449,11 +450,27 @@ function openTemporaryHiddenTab(url, callback) {
         url: url,
         active: false,
     }, function(tab) {
-        callback(tab);
+        callback(tab, chrome.runtime.lastError);
 
         // This is not expected to happen, but just in case:
         if (tab) {
             createdTabId = tab.id;
+            // Register the tab ID with the background page so that if the user closes the
+            // current tab, that all other temporary tabs are gone too.
+            if (!_temporaryTabPort) {
+                _temporaryTabPort = chrome.runtime.connect({
+                    name: 'kill-tabs-on-unload',
+                });
+            }
+            _temporaryTabPort.postMessage({
+                createdTabId: createdTabId,
+            });
+            // Not expected to happen. Can happen if the background page somehow reloads.
+            _temporaryTabPort.onDisconnect.addListener(function(port) {
+                if (port === _temporaryTabPort) {
+                    _temporaryTabPort = null;
+                }
+            });
         } else {
             tabIsRemoved();
         }
@@ -462,6 +479,9 @@ function openTemporaryHiddenTab(url, callback) {
     function tabsOnRemoved(removedTabId) {
         if (removedTabId === createdTabId) {
             tabIsRemoved();
+            _temporaryTabPort.postMessage({
+                removedTabId: createdTabId,
+            });
         }
     }
     function tabIsRemoved() {
@@ -470,8 +490,10 @@ function openTemporaryHiddenTab(url, callback) {
         if (_temporaryTabQueue.length) {
             var [url, callback] = _temporaryTabQueue.shift();
             openTemporaryHiddenTab(url, callback);
+        } else if (_temporaryTabCount === 0) {
+            _temporaryTabCount.disconnect();
+            _temporaryTabCount = null;
         }
-
     }
 }
 
