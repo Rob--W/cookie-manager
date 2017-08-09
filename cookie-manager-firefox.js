@@ -6,11 +6,7 @@
 /* jshint esversion: 6 */
 'use strict';
 
-// Firefox-specific patches. Only needed before Firefox 56.
-// The last private cookie bug have been fixed in Firefox 56 (bugzil.la/1354229).
-// <applet> was removed from Firefox 56 (bugzil.la/1279218).
-// Use this to detect engines that are based on Firefox 56.
-if (typeof browser !== 'undefined' && typeof HTMLAppletElement !== 'undefined') {
+if (typeof browser !== 'undefined') {
     // Firefox bugs...
     let {
         getAll: cookiesGetAll,
@@ -43,7 +39,16 @@ if (typeof browser !== 'undefined' && typeof HTMLAppletElement !== 'undefined') 
             cookiesGetAll(details, callback);
             return;
         }
+        runWithoutPrivateCookieBugs(function() {
+            cookiesGetAll(details, callback);
+        }, function() {
+            privateCookiesGetAll(details, callback);
+        });
+    };
+
+    let privateCookiesGetAll = function(details, callback) {
         // Work around bugzil.la/1318948.
+        // and work around bugzil.la/1381197.
         var {domain, url} = details;
         url = url && new URL(url);
         var allDetails = Object.assign({}, details);
@@ -127,8 +132,154 @@ if (typeof browser !== 'undefined' && typeof HTMLAppletElement !== 'undefined') 
             cookiesSet(cookie, callback);
             return;
         }
-        queueRequestToSetCookies(cookie, callback);
+        runWithoutPrivateCookieBugs(function() {
+            cookiesSet(cookie, callback);
+        }, function() {
+            queueRequestToSetCookies(cookie, callback);
+        });
     };
+}
+
+// Checks whether the browser supports the cookies API without bugs.
+// If (likely) bug-free, callbackNoBugs is called.
+// Otherwise callbackWithBugs is called, which marks the cookies API as unusable,
+// and forces cookies to be modified via actual network requests.
+// - runWithoutPrivateCookieBugs.needsFirstPartyRequest is set to true if the network request has
+//   to happen via a main-frame navigation.
+function runWithoutPrivateCookieBugs(callbackNoBugs, callbackWithBugs) {
+    // There are several bugs in Firefox with private cookies.
+    //
+    // Firefox before 56:
+    // - cookies cannot be modified - bugzil.la/1354229
+    // - cookies cannot be filtered by 'url' or 'domain' - bugzil.la/1318948
+    //
+    // Firefox (all versions):
+    // - cookies cannot be modified or queried by 'url' or 'domain' when FPI is enabled, i.e.
+    //   privacy.firstparty.isolate is true - bugzil.la/1381197
+    // - cookies in the safebrowsing cookie jar can never be modified.
+
+    if (!runWithoutPrivateCookieBugs.cachedResultPromise) {
+        runWithoutPrivateCookieBugs.cachedResultPromise = new Promise(checkPrivateCookieBugs);
+    }
+    runWithoutPrivateCookieBugs.cachedResultPromise.then(callbackNoBugs, callbackWithBugs);
+}
+
+function checkPrivateCookieBugs(callbackNoBugs, callbackWithBugs) {
+    // Even if we detect that third-party cookies are disabled, we cannot fall back to first-party
+    // cookies if we cannot open tabs through the tabs API, e.g. in Firefox for Android before 54.
+    // Even if the tabs API is available, we don't want to try opening tabs if private windows are
+    // not supported, e.g. in all versions of Firefox for Android.
+    var canSimulateFirstPartyRequests = !!(chrome.tabs && chrome.windows);
+
+    var browserPrivatebrowsingAutostart = false;
+    if (chrome.extension.inIncognitoContext) {
+        try {
+            browserPrivatebrowsingAutostart =
+                chrome.extension.getBackgroundPage().chrome.extension.inIncognitoContext;
+        } catch (e) {
+            // This can happen if the current tab's OriginAttributes does not match the background
+            // page's. E.g. private browsing mode mismatch.
+            // Or maybe the background page was shut down.
+            console.warn('Cannot determine status of browser.privatebrowsing.autostart: ' + e);
+        }
+    }
+
+    // In the TOR Browser, browser.privatebrowsing.autostart=true by default.
+    // We are mainly interested in the following defaults of the TOR browser:
+    // - First-party isolation (FPI) is enabled.
+    // - Third-party cookies are disabled.
+    // - Private browsing mode is always enabled.
+    //
+    // For the following reasons:
+    // - Because of FPI, the cookies API cannot edit cookies - bugzil.la/1381197
+    // - Because of disabled third-party cookies, the only cookies are first-party cookies.
+    //   Consequently, by forcing our cookie requests to be first-party, all cookies can be edited.
+    // - We ducktype the TOR browser: If private browsing mode is enabled, then assume that
+    //   FPI and third-party cookies are enabled too.
+    //
+    // TODO: Hopefully the FPI bugs are fixed in Firefox 59, so we can improve this feature
+    // detection and support FPI through the cookies API - see the discussion at bugzil.la/1362834
+    if (browserPrivatebrowsingAutostart && canSimulateFirstPartyRequests) {
+        // FPI is likely enabled, need to force 1st-party requests.
+        runWithoutPrivateCookieBugs.needsFirstPartyRequest = true;
+        callbackWithBugs();
+        return;
+    }
+
+    // NOTE: After this point, we are unable to detect whether FPI is enabled.
+    // If FPI is enabled, then we cannot modify cookies.
+    // In the default Firefox release, FPI is disabled, so we should not/rarely be affected.
+
+    // <applet> was removed from Firefox 56 (bugzil.la/1279218),
+    // so if it is present, then we are in an engine based on Firefox 56 and certainly buggy.
+    if (typeof HTMLAppletElement !== 'undefined') {
+        if (!canSimulateFirstPartyRequests) {
+            runWithoutPrivateCookieBugs.needsFirstPartyRequest = false;
+            callbackWithBugs();
+            return;
+        }
+        checkThirdPartyCookiesEnabled(function() {
+            runWithoutPrivateCookieBugs.needsFirstPartyRequest = false;
+            callbackWithBugs();
+        }, function() {
+            // Third-party cookies disabled, need to force 1st-party requests.
+            runWithoutPrivateCookieBugs.needsFirstPartyRequest = true;
+            callbackWithBugs();
+        });
+        return;
+    }
+
+    runWithoutPrivateCookieBugs.needsFirstPartyRequest = false;
+    callbackNoBugs();
+}
+
+// Quickly checks whether third-party cookies are enabled.
+function checkThirdPartyCookiesEnabled(isEnabled, isDisabled) {
+    var dummyCookie = {
+        url: 'http://cookie-manager-firefox.local',
+        name: 'cookie-manager-test-cookie-' + Math.random(),
+        value: 'dummy-test-value',
+        // No expirationDate = session cookie.
+        // No storeId = inherit from current context.
+    };
+
+    function cookiesSet(cookie, callback) {
+        // We cannot use chrome.cookies.set because we patch and overwrite it.
+        window.browser.cookies.set(cookie).then(callback);
+    }
+
+    var img = new Image();
+
+    // The onBeforeSendHeaders will always be triggered, even if the target is unreachable.
+    chrome.webRequest.onBeforeSendHeaders.addListener(function listener({requestHeaders}) {
+        chrome.webRequest.onBeforeSendHeaders.removeListener(listener);
+
+        // If the cookie is set, third-party cookies are enabled.
+        // If the cookie is not set, third-party cookies are disabled (e.g. in TOR Browser).
+        var isThirdPartyCookisEnabled = requestHeaders.some(({name, value}) => {
+            return /^cookie$/i.test(name) &&
+                value.includes(dummyCookie.name + '=' + dummyCookie.value);
+        });
+
+        // Delete the cookie.
+        dummyCookie.expirationDate = 0;
+        cookiesSet(dummyCookie, function() {
+            if (isThirdPartyCookisEnabled) {
+                isEnabled();
+            } else {
+                isDisabled();
+            }
+        });
+
+        return {cancel: true};
+    }, {
+        urls: [dummyCookie.url + '/*'],
+        types: ['image'],
+    }, ['requestHeaders', 'blocking']);
+
+    cookiesSet(dummyCookie, function() {
+        img.src = dummyCookie.url;
+    });
 }
 
 /**
@@ -213,15 +364,23 @@ function arrayAppend(arrayOut, arrayIn) {
  * @returns {Promise<boolean>} Whether the cookies have been set.
  */
 function sendRequestToSetCookies(domain, cookies) {
+    // When third-party cookies are disabled, cookies cannot be modified via a
+    // hidden cross-domain request. We have to trigger a main frame navigation
+    // in order to be able to modify cookies.
+    //
+    // See checkPrivateCookieBugs for more information.
+    var needsFirstPartyRequest = runWithoutPrivateCookieBugs.needsFirstPartyRequest;
+
     var cookieHeaderValues = cookies.map(cookieToHeaderValue);
     // If any cookie has the Secure flag, then the request must go over HTTPs.
     var url = (cookies.some((cookie) => cookie.secure) ? 'https://' : 'http://') +
         domain + '/?' + getRandomUniqueNumber(sendRequestToSetCookies);
     var requestFilter = {
         urls: [url],
-        types: ['image'],
+        types: needsFirstPartyRequest ? ['main_frame'] : ['image'],
     };
     var affectedRequestId;
+    var affectedTabId;
     var didSetCookie = false;
 
     if (url.startsWith('http:')) {
@@ -229,13 +388,21 @@ function sendRequestToSetCookies(domain, cookies) {
         requestFilter.urls.push(url.replace('http', 'https'));
     }
 
-    chrome.webRequest.onBeforeRequest.addListener(onBeforeRequest, requestFilter, ['blocking']);
-    chrome.webRequest.onBeforeSendHeaders.addListener(
+    var cleanupFunctions = [];
+    function addListener(target, listener, ...args) {
+        target.addListener(listener, ...args);
+        cleanupFunctions.push(function() {
+            target.removeListener(listener);
+        });
+    }
+
+    addListener(chrome.webRequest.onBeforeRequest, onBeforeRequest, requestFilter, ['blocking']);
+    addListener(chrome.webRequest.onBeforeSendHeaders,
         onBeforeSendHeaders, requestFilter, ['requestHeaders', 'blocking']);
-    chrome.webRequest.onHeadersReceived.addListener(
+    addListener(chrome.webRequest.onHeadersReceived,
         onHeadersReceived, requestFilter, ['responseHeaders', 'blocking']);
 
-    return new Promise(function(resolve) {
+    function sendThirdPartyRequest(resolve) {
         // WebRequest event listeners are registered asynchronously. Make a roundtrip
         // via the parent process to make sure that the event listener has been
         // registered.
@@ -257,17 +424,72 @@ function sendRequestToSetCookies(domain, cookies) {
                 });
             }, 2000);
         });
-    }).then(function() {
-        chrome.webRequest.onBeforeRequest.removeListener(onBeforeRequest);
-        chrome.webRequest.onBeforeSendHeaders.removeListener(onBeforeSendHeaders);
-        chrome.webRequest.onHeadersReceived.removeListener(onHeadersReceived);
+    }
 
+    function sendFirstPartyRequest(resolve) {
+        // Open incongito tab in current window to trigger request.
+        // Without an explicit windowId, the tabs.create API opens a tab in the current window.
+        // The caller ensures that the current window is an incognito window.
+        console.assert(chrome.extension.inIncognitoContext, 'inIncognitoContext === true');
+
+        addListener(chrome.tabs.onRemoved, function(tabId) {
+            if (affectedTabId === tabId) {
+                resolve();
+            }
+        });
+
+        addListener(chrome.webRequest.onErrorOccurred, function(details) {
+            if (details.requestId !== affectedRequestId) return;
+            resolve();
+        }, requestFilter);
+
+        addListener(chrome.webRequest.onResponseStarted, function(details) {
+            if (details.requestId !== affectedRequestId) return;
+            resolve();
+        }, requestFilter);
+
+        var shouldRemoveTab = false;
+        cleanupFunctions.push(function() {
+            if (affectedTabId) {
+                chrome.tabs.remove(affectedTabId);
+            } else {
+                shouldRemoveTab = true;
+            }
+        });
+
+        // TODO: Switch to iframes instead?
+        // (but that would likely fail if 3rd-party cookies are blocked).
+        chrome.tabs.create({
+            url: url,
+            active: false,
+        }, function(tab) {
+            // Also set in onBeforeRequest, but set it here too in case the request never succeeds.
+            affectedTabId = tab.id;
+
+            if (shouldRemoveTab) {
+                chrome.tabs.remove(affectedTabId);
+            }
+        });
+    }
+
+    return new Promise(function(resolve) {
+        if (needsFirstPartyRequest) {
+            sendFirstPartyRequest(resolve);
+        } else {
+            sendThirdPartyRequest(resolve);
+        }
+    }).then(function() {
+        cleanupFunctions.forEach((cleanup) => cleanup());
         return didSetCookie;
+    }, function(error) {
+        cleanupFunctions.forEach((cleanup) => cleanup());
+        throw error;
     });
 
     function onBeforeRequest(details) {
         if (affectedRequestId) return;
         affectedRequestId = details.requestId;
+        affectedTabId = details.tabId;
         chrome.webRequest.onBeforeRequest.removeListener(onBeforeRequest);
     }
     function onBeforeSendHeaders(details) {
@@ -275,7 +497,7 @@ function sendRequestToSetCookies(domain, cookies) {
         // Remove cookies in request to prevent the server from recognizing the
         // client.
         var requestHeaders = details.requestHeaders.filter(function(header) {
-            return !/^cookie$/i.test(header.name);
+            return !/^(cookie|authorization)$/i.test(header.name);
         });
         if (requestHeaders.length !== details.requestHeaders.length) {
             return {
@@ -288,6 +510,17 @@ function sendRequestToSetCookies(domain, cookies) {
         var responseHeaders = details.responseHeaders.filter(function(header) {
             return !/^(set-cookie2?|location)$/i.test(header.name);
         });
+        if (needsFirstPartyRequest) {
+            // The main-frame request is aborted as soon as possible.
+            // Block all scripts and other resources just in case.
+            responseHeaders = responseHeaders.filter(function(header) {
+                return !/^(content-security-policy|www-authenticate)$/i.test(header.name);
+            });
+            responseHeaders.push({
+                name: 'Content-Security-Policy',
+                value: 'default-src \'none\'',
+            });
+        }
         if (details.statusCode >= 300 && details.statusCode < 400) {
             responseHeaders.push({
                 name: 'Location',
