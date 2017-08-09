@@ -730,6 +730,16 @@ function renderCookie(cookiesOut, cookie) {
         expiryInfo = formatDate(new Date(cookie.expirationDate*1000));
     }
     row.insertCell(5).textContent = expiryInfo;
+    if (cookie.expirationDate < Date.now() / 1000) {
+        row.cells[5].title =
+            'This cookie has already been expired and will not be sent to websites.\n' +
+            'To explicitly delete it:\n' +
+            '1. Edit the cookie.\n' +
+            '2. Change the expiration date to a future date and save the cookie.\n' +
+            '3. Change the expiration date to a past date and save the cookie.';
+        row.cells[5].style.cursor = 'help';
+        row.cells[5].style.color = 'red';
+    }
 
     function deleteCookie(resolve) {
         var details = getDetailsForCookiesSetAPI();
