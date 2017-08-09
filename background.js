@@ -32,6 +32,7 @@ if (chrome.browserAction) {
             path: {
                 16: 'icons/16.png',
                 32: 'icons/32.png',
+                64: 'icons/64.png',
             },
         });
     }
