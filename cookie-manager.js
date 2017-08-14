@@ -297,6 +297,10 @@ function getContextualIdentityNames() {
         return Promise.resolve(contextualIdNameMap);
     }
     return browser.contextualIdentities.query({}).then(function(contextualIdentities) {
+        if (!contextualIdentities) {
+            // contextualIdentities can be false or null - https://bugzil.la/1389265
+            return contextualIdNameMap;
+        }
         var byName = Object.create(null);
         contextualIdentities.forEach(function(contextualIdentity) {
             var name = contextualIdentity.name;
@@ -336,6 +340,9 @@ function getContextualIdentityNames() {
                 }
             }
         });
+        return contextualIdNameMap;
+    }, function(error) {
+        console.error('Unexpected error in contextualIdentities.query: ' + error);
         return contextualIdNameMap;
     });
 }
