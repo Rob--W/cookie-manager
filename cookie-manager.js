@@ -740,10 +740,7 @@ function renderCookie(cookiesOut, cookie) {
     if (cookie.expirationDate < Date.now() / 1000) {
         row.cells[5].title =
             'This cookie has already been expired and will not be sent to websites.\n' +
-            'To explicitly delete it:\n' +
-            '1. Edit the cookie.\n' +
-            '2. Change the expiration date to a future date and save the cookie.\n' +
-            '3. Change the expiration date to a past date and save the cookie.';
+            'To explicitly delete it, select the cookie and click on the Remove button.';
         row.cells[5].style.cursor = 'help';
         row.cells[5].style.color = 'red';
     }
@@ -752,17 +749,23 @@ function renderCookie(cookiesOut, cookie) {
         var details = getDetailsForCookiesSetAPI();
         details.value = '';
         details.expirationDate = 0;
-        chrome.cookies.set(details, function() {
+        chrome.cookies.set(details, function(newCookie) {
             if (chrome.runtime.lastError) {
                 resolve(chrome.runtime.lastError.message);
             } else {
                 maybeHandleFirefoxBug1362834(details, function(error) {
                     if (error) {
                         resolve(error);
-                    } else {
+                        return;
+                    }
+                    maybeHandleFirefoxBug1388873(details, newCookie, function(error) {
+                        if (error) {
+                            resolve(error);
+                            return;
+                        }
                         row.cmApi.setDeleted(true);
                         resolve();
-                    }
+                    });
                 });
             }
         });
@@ -832,6 +835,31 @@ function renderCookie(cookiesOut, cookie) {
                 // All good!
                 callback();
             }
+        });
+    }
+
+    function maybeHandleFirefoxBug1388873(details, newCookie, callback) {
+        // Work-around to cookies still being in the database but not expired.
+        // These are visible to cookies.getAll - https://bugzil.la/1388873
+        if (!newCookie || newCookie.expirationDate !== cookie.expirationDate) {
+            // Cookie was successfully deleted.
+            callback();
+            return;
+        }
+        console.log('Temporarily unexpiring cookie to forcibly remove it (bug 1388873).');
+        // The work-around is to first unexpire the cookie,
+        // and then to try and expire it again.
+        details.expirationDate = Date.now() / 1000 + 60;
+        chrome.cookies.set(details, function() {
+            details.expirationDate = 0;
+            chrome.cookies.set(details, function(newCookie2) {
+                if (!newCookie2 || newCookie2.expirationDate !== cookie.expirationDate) {
+                    callback();
+                } else {
+                    callback('Cannot delete an already-expired cookie. ' +
+                        'The browser will automatically remove it in the future.');
+                }
+            });
         });
     }
 }
