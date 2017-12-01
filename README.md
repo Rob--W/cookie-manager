@@ -24,6 +24,17 @@ If you have suggestions or questions, open an issue at https://github.com/Rob--W
 - Add cookies
 - Edit cookies (=add cookie, click the "Copy last selected cookie" button and save the changes)
 
+
+## Keyboard shortcuts
+
+Currently the UI is optimized for use on mobile, and support for keyboard shortcuts is limited to
+the rows in the result table:
+
+- <kbd>Arrow up</kbd> Focus the previous cookie row.
+- <kbd>Arrow down</kbd> Focus the next cookie row.
+- <kbd>Spacebar</kbd> Toggle selection of the focused row.
+- <kbd>Delete</kbd> Remove the focused cookie.
+
 # Browser-specific notes
 ## Chrome
 No special notes. I haven't published the extension to the Chrome Web Store.

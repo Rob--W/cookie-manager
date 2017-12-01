@@ -745,6 +745,8 @@ function renderCookie(cookiesOut, cookie) {
         row.cells[5].style.color = 'red';
     }
 
+    bindKeyboardToRow(row);
+
     function deleteCookie(resolve) {
         var details = getDetailsForCookiesSetAPI();
         details.value = '';
@@ -861,6 +863,69 @@ function renderCookie(cookiesOut, cookie) {
                 }
             });
         });
+    }
+}
+function bindKeyboardToRow(row) {
+    row.tabIndex = 1;
+    row.onfocus = function() {
+        var rect = row.getBoundingClientRect();
+        var viewTop = 0;
+        var viewBottom = document.getElementById('footer-controls').offsetTop;
+        var deltaY;
+        if (rect.top < viewTop) {
+            deltaY = (rect.top - viewTop);
+        } else if (rect.bottom > viewBottom) {
+            deltaY = (rect.bottom - viewBottom);
+        }
+        if (deltaY) {
+            window.scrollBy({
+                top: deltaY,
+                behavior: 'instant',
+            });
+        }
+    };
+    row.onkeydown = function(event) {
+        if (event.altKey ||
+            event.ctrlKey ||
+            event.cmdKey ||
+            event.shiftKey) {
+            // Do nothing if a key modifier was pressed.
+            return;
+        }
+        switch (event.keyCode) {
+        case 32: // Spacebar
+            // Toggle selection.
+            row.click();
+            break;
+        case 38: // Arrow up
+        case 40: // Arrow down
+            var next = event.keyCode === 40 ? row.nextElementSibling : row.previousElementSibling;
+            if (next) {
+                next.focus();
+            }
+            break;
+        case 46: // Delete
+            deleteThisRowCookie();
+            break;
+        default:
+            return;
+        }
+        event.preventDefault();
+    };
+
+    function deleteThisRowCookie() {
+        var msg = 'Do you really want to delete the currently focused cookie?';
+        msg += '\nTo delete all selected cookies (instead of the currently focused cookie),' +
+            ' use the "Remove selected" button at the bottom.';
+        if (window.confirm(msg)) {
+            row.cmApi.deleteCookie().then(function(error) {
+                if (error) {
+                    alert('Failed to delete cookie:\n' + error);
+                } else {
+                    updateButtonView();
+                }
+            });
+        }
     }
 }
 function cookieToUrl(cookie) {
