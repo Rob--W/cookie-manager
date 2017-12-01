@@ -7,9 +7,7 @@
 'use strict';
 
 var ANY_COOKIE_STORE_ID = '(# of any cookie jar)';
-// Updated whenever the user clicks on a row.
-// Used by the edit form for auto-fill.
-var mostRecentlySelectedCookie;
+var currentlyEditingCookieRow = null;
 
 document.getElementById('searchform').onsubmit = function(e) {
     e.preventDefault();
@@ -141,7 +139,10 @@ updateCookieStoreIds();
 window.addEventListener('focus', updateCookieStoreIds);
 
 // Add/edit cookie functionality
-document.getElementById('add-or-edit').onclick = function() {
+document.getElementById('show-new-form').onclick = function() {
+    document.getElementById('editform').reset();
+    setEditSaveEnabled(true);
+    currentlyEditingCookieRow = null;
     document.body.classList.add('editing-cookie');
 };
 document.getElementById('editform').onsubmit = function(event) {
@@ -187,19 +188,112 @@ document.getElementById('editform').onsubmit = function(event) {
         if (reportValidity('editform.expiry', cookieValidators.expirationDate(cookie.expirationDate))) {
             return;
         }
+    } else if (document.getElementById('editform.sessionFalseExpired').checked) {
+        cookie.expirationDate = 0;
     }
     cookie.storeId = document.getElementById('editform.storeId').value;
 
-    chrome.cookies.set(cookie, function() {
-        onCookieSet(chrome.runtime.lastError && chrome.runtime.lastError.message);
-    });
+    // Format cookie to the cookies.Cookie type.
+    var newCookie = Object.assign({}, cookie);
+    newCookie.hostOnly = !('domain' in newCookie);
+    if (newCookie.hostOnly) {
+        newCookie.domain = parsedUrl.hostname;
+    } else if (!newCookie.domain.startsWith('.')) {
+        newCookie.domain = '.' + newCookie.domain;
+    }
+    if (!('path' in newCookie)) {
+        newCookie.path = '/';
+    }
+    if (!('expirationDate' in newCookie)) {
+        newCookie.session = true;
+    }
 
-    function onCookieSet(errorMessage) {
-        if (errorMessage) {
-            alert('Failed to save cookie because of:\n' + errorMessage);
-        } else {
-            setEditSaveEnabled(false);
-        }
+    var rowToEdit = currentlyEditingCookieRow;
+    if (rowToEdit && !isSameCookieKey(newCookie, rowToEdit.cmApi.rawCookie)) {
+        rowToEdit.cmApi.deleteCookie().then(function(error) {
+            if (rowToEdit !== currentlyEditingCookieRow) {
+                console.warn('Closed edit form while deleting the old cookie.');
+            }
+            if (error) {
+                alert('Failed to replace cookie:\n' + error);
+                return;
+            }
+            if (!newCookie.session && cookie.expirationDate < Date.now() / 1000) {
+                return;
+            }
+            addOrReplaceCookie();
+        });
+    } else {
+        addOrReplaceCookie();
+    }
+
+    function addOrReplaceCookie() {
+        chrome.cookies.set(cookie, function() {
+            if (rowToEdit !== currentlyEditingCookieRow) {
+                console.warn('Closed edit form while saving the cookie.');
+            }
+
+            var errorMessage = chrome.runtime.lastError && chrome.runtime.lastError.message;
+            if (errorMessage) {
+                alert('Failed to save cookie because of:\n' + errorMessage);
+                return;
+            }
+            if (!rowToEdit) {
+                setEditSaveEnabled(false);
+                return;
+            }
+
+            // Replace the cookie row.
+            var row = document.createElement('tr');
+            row.classList.add('cookie-edited');
+            row.classList.toggle('highlighted', rowToEdit.classList.contains('highlighted'));
+            renderCookie({
+                insertRow: function() {
+                    return row;
+                },
+            }, newCookie);
+            var restoreButton = document.createElement('button');
+            restoreButton.className = 'restore-single-cookie';
+            restoreButton.textContent = 'Restore';
+            restoreButton.onclick = function(event) {
+                event.stopPropagation();
+                if (!window.confirm('Do you want to undo the edit and restore the previous cookie?')) {
+                    return;
+                }
+                restoreButton.disabled = true;
+
+                if (isSameCookieKey(newCookie, rowToEdit.cmApi.rawCookie)) {
+                    rowToEdit.cmApi.restoreCookie().then(onCookieRestored);
+                } else {
+                    row.cmApi.deleteCookie().then(function(error) {
+                        if (error) {
+                            restoreButton.disabled = false;
+                            alert('Failed to delete new cookie because of:\n' + error);
+                            return;
+                        }
+                        rowToEdit.restoreCookie().then(onCookieRestored);
+                    });
+                }
+                function onCookieRestored(error) {
+                    if (error) {
+                        restoreButton.disabled = false;
+                        alert('Failed to restore cookie because of:\n' + error);
+                        return;
+                    }
+                    rowToEdit.classList.toggle('highlighted', row.classList.contains('highlighted'));
+                    row.replaceWith(rowToEdit);
+                    rowToEdit.focus();
+                }
+            };
+            row.querySelector('.action-buttons').appendChild(restoreButton);
+            rowToEdit.replaceWith(row);
+            if (rowToEdit === currentlyEditingCookieRow) {
+                currentlyEditingCookieRow = null;
+                document.body.classList.remove('editing-cookie');
+                row.querySelector('button.edit-single-cookie').focus();
+                updateButtonView();
+            }
+        });
     }
 
     function reportValidity(elementId, validationMessage) {
@@ -225,12 +319,7 @@ document.getElementById('editform').onkeydown = function(event) {
     }
 };
 
-document.getElementById('edit-copy').onclick = function() {
-    var cookie = mostRecentlySelectedCookie;
-    if (!cookie) {
-        alert('Please search for cookies and click on a cookie row to select a cookie.');
-        return;
-    }
+function renderEditCookieForm(cookie, rowToEdit) {
     document.getElementById('editform.url').value = cookie.url;
     document.getElementById('editform.name').value = cookie.name;
     document.getElementById('editform.value').value = cookie.value;
@@ -259,6 +348,9 @@ document.getElementById('edit-copy').onclick = function() {
     } else {
         document.getElementById('editform.sessionFalse').checked = true;
         setExpiryTimestamp(document.getElementById('editform.expiry'), cookie.expirationDate);
+        if (cookie.expirationDate < Date.now() / 1000) {
+            document.getElementById('editform.sessionFalseExpired').checked = true;
+        }
     }
 
     document.getElementById('editform.secure').checked = cookie.secure;
@@ -268,8 +360,12 @@ document.getElementById('edit-copy').onclick = function() {
     }
     document.getElementById('editform.storeId').value = cookie.storeId;
     setEditSaveEnabled(true);
-};
+    currentlyEditingCookieRow = rowToEdit;
+    document.body.classList.add('editing-cookie');
+
+}
 document.getElementById('edit-cancel').onclick = function() {
+    currentlyEditingCookieRow = null;
     document.body.classList.remove('editing-cookie');
 };
 
@@ -555,7 +651,7 @@ function doSearch() {
 
         if (hasNoCookies) {
             var cell = cookiesOut.insertRow().insertCell();
-            cell.colSpan = 6;
+            cell.colSpan = 7;
             if (errors.length === 0) {
                 cell.textContent = 'No cookies found.';
             } else {
@@ -690,7 +786,6 @@ function renderCookie(cookiesOut, cookie) {
     var row = cookiesOut.insertRow(-1);
     row.onclick = function() {
         this.classList.toggle('highlighted');
-        mostRecentlySelectedCookie = cookie;
         updateButtonView();
     };
     row.cmApi = {
@@ -744,6 +839,17 @@ function renderCookie(cookiesOut, cookie) {
         row.cells[5].style.cursor = 'help';
         row.cells[5].style.color = 'red';
     }
+
+    var actionButtonsCell = row.insertCell(6);
+    actionButtonsCell.className = 'action-buttons';
+    var editButton = document.createElement('button');
+    editButton.className = 'edit-single-cookie';
+    editButton.textContent = 'Edit';
+    editButton.onclick = function(event) {
+        event.stopPropagation();
+        renderEditCookieForm(cookie, row);
+    };
+    actionButtonsCell.appendChild(editButton);
 
     bindKeyboardToRow(row);
 
@@ -939,4 +1045,22 @@ function cookieToUrl(cookie) {
     }
     url += cookie.path;
     return url;
+}
+
+// Checks whether the given cookies would be written to the same cookie slot.
+// The given cookies must be of the type cookies.Cookie.
+function isSameCookieKey(cookieA, cookieB) {
+    // Cookies are keyed by (domain, path, name) + origin attributes.
+    // (where the domain starts with a dot iff it is a domain cookie (opposed to host-only)).
+    // Origin attributes currently include:
+    // - userContextId and privateBrowsingId -> storeId
+    // - firstPartyDomain -> TODO when 
+    // TODO: Add firstPartyDomain here when implemented - see https://bugzil.la/1381197
+    if (cookieA.name !== cookieB.name ||
+        cookieA.domain !== cookieB.domain ||
+        cookieA.path !== cookieB.path ||
+        cookieA.storeId !== cookieB.storeId) {
+        return false;
+    }
+    return true;
 }

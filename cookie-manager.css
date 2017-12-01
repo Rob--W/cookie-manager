@@ -60,6 +60,9 @@
 #editform label[for] input[type=datetime-local] {
     flex: 1;
 }
+#editform #editform\.sessionFalseExpired:checked + span {
+    color: red;
+}
 
 body.editing-cookie {
     overflow: hidden;
@@ -105,12 +108,21 @@ td:nth-child(even) {
 .cookie-removed td {
     opacity: 0.4;
 }
+.cookie-edited {
+    font-style: italic;
+}
 .highlighted,
 .highlighted td {
     background-color: #FFA;
 }
 .highlighted td:nth-child(even) {
     background-color: #FF6;
+}
+.action-buttons button {
+    box-sizing: content-box;
+    display: block;
+    padding-left: 0;
+    padding-right: 0;
 }
 
 .footer-space {

@@ -22,7 +22,7 @@ If you have suggestions or questions, open an issue at https://github.com/Rob--W
 - Supports Firefox for Android (Fennec)
 - Supports the TOR Browser
 - Add cookies
-- Edit cookies (=add cookie, click the "Copy last selected cookie" button and save the changes)
+- Edit cookies
 
 
 ## Keyboard shortcuts
