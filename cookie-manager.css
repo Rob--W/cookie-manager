@@ -124,6 +124,9 @@ td:nth-child(even) {
     padding-left: 0;
     padding-right: 0;
 }
+.cookie-removed .action-buttons button {
+    visibility: hidden;
+}
 
 .footer-space {
     height: 3em;
