@@ -554,7 +554,7 @@ function doSearch() {
             if (value !== '*') {
                 // Optimization: Do not create the query and filter if the
                 // user wants to see all results.
-                filters[param] = patternToRegExp(value);
+                filters[param] = patternToRegExp(value, param === 'domain');
             }
         } else if (value) {
             query[param] = value;
@@ -695,9 +695,19 @@ function doSearch() {
 
 // Utility functions.
 
-function patternToRegExp(pattern) {
+function patternToRegExp(pattern, isDomainPattern) {
     pattern = pattern.replace(/[[^$.|?+(){}\\]/g, '\\$&');
     pattern = pattern.replace(/\*/g, '.*');
+    if (isDomainPattern) {
+        // The cookies API is not consistent in filtering dots.
+        // Filtering by example.com and .example.com has the same effect.
+        // So we too permit an optional dot in the front.
+        // The following extra matches are added:
+        // example* -> .example.com*
+        // *example.com -> *.example.com
+        // .example.com -> *.example.com
+        pattern = pattern.replace(/^((?:\.\*)*)\\\.?/, '$1\\.?');
+    }
     pattern = '^' + pattern + '$';
     return new RegExp(pattern, 'i');
 }
