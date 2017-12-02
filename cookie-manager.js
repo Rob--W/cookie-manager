@@ -283,6 +283,7 @@ document.getElementById('editform').onsubmit = function(event) {
                     rowToEdit.classList.toggle('highlighted', row.classList.contains('highlighted'));
                     row.replaceWith(rowToEdit);
                     rowToEdit.focus();
+                    // updateButtonView() not needed because we have copied the 'highlighted' state.
                 }
             };
             row.querySelector('.action-buttons').appendChild(restoreButton);
@@ -291,7 +292,7 @@ document.getElementById('editform').onsubmit = function(event) {
                 currentlyEditingCookieRow = null;
                 document.body.classList.remove('editing-cookie');
                 row.querySelector('button.edit-single-cookie').focus();
-                updateButtonView();
+                // updateButtonView() not needed because we have copied the 'highlighted' state.
             }
         });
     }
