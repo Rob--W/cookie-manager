@@ -169,6 +169,8 @@ if (typeof browser !== 'undefined') {
     };
 }
 
+var cookiesAPIwithFirstPartyDomainSupport = false;
+
 // Return a callback that is passed to cookies.getAll(details, callback),
 // but without immutable cookies, such as safe browsing cookies while bug 1381197 is open.
 function getAllCallbackWithoutImmutableCookies(details, callback) {
@@ -180,17 +182,21 @@ function getAllCallbackWithoutImmutableCookies(details, callback) {
             c.httpOnly &&
             c.name === 'NID';
     }
-    if (details.domain || details.url) {
+    if (details.domain || details.url || cookiesAPIwithFirstPartyDomainSupport) {
         // Because of https://bugzil.la/1381197#c2 , if the domain/url is set, the getAll query
         // does not include SB cookies.
+        // If https://bugzil.la/1381197 has been fixed, then we can also return the callback as-is.
         return callback;
     }
-    // TODO: Check when https://bugzil.la/1381197 has been implemented and return the callback.
-
 
     return function(cookies) {
-        if (!cookies) {
-            // Synchronously call callback (forwards error if lastError was set).
+        if (!cookies || !cookies.length) {
+            callback(cookies);
+            return;
+        }
+        if ('firstPartyDomain' in cookies[0]) {
+            // Apparently the patches for https://bugzil.la/1381197 have landed.
+            cookiesAPIwithFirstPartyDomainSupport = true;
             callback(cookies);
             return;
         }
