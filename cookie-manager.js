@@ -148,7 +148,7 @@ document.getElementById('show-new-form').onclick = function() {
 document.getElementById('editform').onsubmit = function(event) {
     event.preventDefault();
     var cookie = {};
-    cookie.url = document.getElementById('editform.url').value;
+    cookie.url = urlWithoutPort(document.getElementById('editform.url').value);
     cookie.name = document.getElementById('editform.name').value;
     cookie.value = document.getElementById('editform.value').value;
 
@@ -543,6 +543,10 @@ function doSearch() {
             query[param] = value;
         }
     });
+
+    if (typeof query.url === 'string') {
+        query.url = urlWithoutPort(query.url);
+    }
 
     // Custom filter: value
     var valueFilterPattern = document.getElementById('.value').value;
@@ -1045,6 +1049,11 @@ function cookieToUrl(cookie) {
     }
     url += cookie.path;
     return url;
+}
+
+function urlWithoutPort(url) {
+    // Strip port to work around https://bugzil.la/1417828
+    return url && url.replace(/^(https?:\/\/[^\/]+):\d+(\/|$)/i, '$1$2');
 }
 
 // Checks whether the given cookies would be written to the same cookie slot.
