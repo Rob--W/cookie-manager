@@ -1,6 +1,5 @@
 /* globals chrome */
 /* globals console */
-/* globals Promise */
 /* globals Set */
 /* jshint browser: true */
 'use strict';
@@ -38,45 +37,48 @@ if (chrome.browserAction) {
             },
         });
     }
-    chrome.browserAction.onClicked.addListener(function(activeTab) {
-        // Note: Using chrome.extension.getViews is a very good way to find
-        // extension tabs. chrome.tabs.query cannot be used here, because
-        // before Firefox 56, extension URLs cannot be filtered
-        // (https://bugzil.la/1269341).
-        Promise.all(
-            chrome.extension.getViews({ type: 'tab' })
-            .map(function(win) {
-                return new Promise(function(resolve) {
-                    if (win.location.pathname === '/cookie-manager.html') {
-                        win.chrome.tabs.getCurrent(function(tab) {
-                            resolve(tab);
-                        });
-                    }
-                }).catch(function() {
-                    // Never reject the promise.
-                });
-            })
-        ).then(function(tabs) {
-            // Exclude missing tabs and tabs from other windows.
-            return tabs.filter(function(tab) {
-                return tab && tab.windowId === activeTab.windowId;
-            });
-        }).then(function(tabs) {
-            if (tabs.some(function(tab) { return tab.active; })) {
-                // Current tab is already the cookie manager.
-                return;
-            }
-            if (tabs.length) {
-                // Focus the first cookie manager tab.
-                chrome.tabs.update(tabs[0].id, {
+    chrome.runtime.getPlatformInfo(function(info) {
+        // On Firefox for Android, the "popup" is just a tab that closes, so we need
+        // to cache the "last active tab".
+        var lastActiveTab = null;
+        var popupTabId = null;
+        chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
+            if (msg === 'getActiveTab') {
+                if (lastActiveTab) {
+                    sendResponse(lastActiveTab);
+                    return;
+                }
+                chrome.tabs.query({
+                    lastFocusedWindow: true,
                     active: true,
+                }, function(tabs) {
+                    sendResponse(tabs && tabs[0] || null);
                 });
+                return true;
+            }
+            if (msg === 'closePopup') {
+                if (popupTabId) {
+                    chrome.tabs.remove(popupTabId);
+                    popupTabId = null;
+                }
                 return;
             }
+        });
+
+        if (chrome.browserAction.setPopup && info.platform !== 'android') {
+            chrome.browserAction.setPopup({
+                popup: 'popup.html',
+            });
+            return;
+        }
+        chrome.browserAction.onClicked.addListener(function(activeTab) {
+            lastActiveTab = activeTab;
             chrome.tabs.create({
-                url: 'cookie-manager.html',
+                url: 'popup.html',
                 windowId: activeTab.windowId,
                 index: activeTab.index + 1,
+            }, function(popupTab) {
+                popupTabId = popupTab.id;
             });
         });
     });

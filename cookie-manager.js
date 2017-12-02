@@ -1,6 +1,7 @@
 /* globals chrome, alert */
 /* globals Promise */
 /* globals Set */
+/* globals URLSearchParams */
 /* globals browser */
 /* globals console */
 /* jshint browser: true */
@@ -135,7 +136,22 @@ function setEditSaveEnabled(canSave) {
 }
 
 updateButtonView();
-updateCookieStoreIds();
+updateCookieStoreIds().then(function() {
+    var params = new URLSearchParams(location.search);
+    var inputs = document.getElementById('searchform')
+        .querySelectorAll('select[id^="."],input[id^="."]');
+    var any = false;
+    Array.from(inputs).forEach(function(input) {
+        var value = params.get(input.id.slice(1));
+        if (value) {
+            input.value = value;
+            any = true;
+        }
+    });
+    if (any) {
+        doSearch();
+    }
+});
 window.addEventListener('focus', updateCookieStoreIds);
 
 // Add/edit cookie functionality
@@ -445,7 +461,7 @@ function getContextualIdentityNames() {
 }
 
 function updateCookieStoreIds() {
-    Promise.all([
+    return Promise.all([
         new Promise(function(resolve) {
             chrome.cookies.getAllCookieStores(resolve);
         }),
