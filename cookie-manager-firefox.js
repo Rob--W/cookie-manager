@@ -35,6 +35,7 @@ if (typeof browser !== 'undefined') {
         }
     };
     chrome.cookies.getAll = function(details, callback) {
+        callback = getAllCallbackWithoutImmutableCookies(details, callback);
         if (!isPrivate(details) || !details.url && !details.domain) {
             cookiesGetAll(details, callback);
             return;
@@ -164,6 +165,67 @@ if (typeof browser !== 'undefined') {
             cookiesSet(cookie, callback);
         }, function() {
             queueRequestToSetCookies(cookie, callback);
+        });
+    };
+}
+
+// Return a callback that is passed to cookies.getAll(details, callback),
+// but without immutable cookies, such as safe browsing cookies while bug 1381197 is open.
+function getAllCallbackWithoutImmutableCookies(details, callback) {
+    // The cookies used for Safebrowsing requests end up in a different cookie jar,
+    // but Firefox's cookies API does not show any difference between the two.
+    function isGoogleNIDCookie(c) {
+        return c.storeId === 'firefox-default' &&
+            c.domain === '.google.com' &&
+            c.httpOnly &&
+            c.name === 'NID';
+    }
+    if (details.domain || details.url) {
+        // Because of https://bugzil.la/1381197#c2 , if the domain/url is set, the getAll query
+        // does not include SB cookies.
+        return callback;
+    }
+    // TODO: Check when https://bugzil.la/1381197 has been implemented and return the callback.
+
+
+    return function(cookies) {
+        if (!cookies) {
+            // Synchronously call callback (forwards error if lastError was set).
+            callback(cookies);
+            return;
+        }
+        var googleNidCookies = cookies && cookies.filter(isGoogleNIDCookie);
+        if (!googleNidCookies.length) {
+            callback(cookies);
+            return;
+        }
+        // We cannot use chrome.cookies.getAll because we patch and overwrite it.
+        window.browser.cookies.getAll({
+            // Because of https://bugzil.la/1381197#c2 , the result excludes SB cookies.
+            domain: '.google.com',
+            name: 'NID',
+            storeId: 'firefox-default',
+        }).then(function(cookiesNoSB) {
+            cookiesNoSB = cookiesNoSB.filter(isGoogleNIDCookie);
+            cookies = cookies.filter(function(c) {
+                if (!isGoogleNIDCookie(c)) {
+                    return true;
+                }
+                var i = cookiesNoSB.findIndex(function(cNoSB) {
+                    return c.value === cNoSB.value &&
+                        c.path === cNoSB.path &&
+                        c.secure === cNoSB.secure &&
+                        c.httpOnly === cNoSB.httpOnly &&
+                        c.expirationDate === cNoSB.expirationDate;
+                });
+                if (i === -1) {
+                    // This is a safe browsing cookie.
+                    return false;
+                }
+                cookiesNoSB.splice(i, 1);
+                return true;
+            });
+            callback(cookies);
         });
     };
 }

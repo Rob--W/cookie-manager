@@ -866,19 +866,13 @@ function renderCookie(cookiesOut, cookie) {
             if (chrome.runtime.lastError) {
                 resolve(chrome.runtime.lastError.message);
             } else {
-                maybeHandleFirefoxBug1362834(details, function(error) {
+                maybeHandleFirefoxBug1388873(details, newCookie, function(error) {
                     if (error) {
                         resolve(error);
                         return;
                     }
-                    maybeHandleFirefoxBug1388873(details, newCookie, function(error) {
-                        if (error) {
-                            resolve(error);
-                            return;
-                        }
-                        row.cmApi.setDeleted(true);
-                        resolve();
-                    });
+                    row.cmApi.setDeleted(true);
+                    resolve();
                 });
             }
         });
@@ -909,46 +903,6 @@ function renderCookie(cookiesOut, cookie) {
         if (!cookie.session) details.expirationDate = cookie.expirationDate;
         details.storeId = cookie.storeId;
         return details;
-    }
-
-    // callback is called without arguments on success, and with an error string upon failure.
-    function maybeHandleFirefoxBug1362834(details, callback) {
-        // The cookies used for Safebrowsing requests end up in a different cookie jar,
-        // but Firefox's cookies API does not show any difference between the two.
-        // We have to retrieve the cookies and see if the deletion succeeded.
-        function isGoogleNIDCookie(c) {
-            return c.storeId === 'firefox-default' &&
-                c.domain === '.google.com' &&
-                c.httpOnly &&
-                c.name === 'NID';
-        }
-        if (!isGoogleNIDCookie(details)) {
-            callback();
-            return;
-        }
-        // Note: We only want to find domain cookies of google.com domains,
-        // but we cannot use the 'domain' filter due to https://bugzil.la/1381197#c2
-        chrome.cookies.getAll({
-            name: 'NID',
-            storeId: 'firefox-default',
-        }, function(cookies) {
-            // Here we actually filter google.com domains.
-            cookies = cookies.filter(isGoogleNIDCookie);
-            if (cookies.some(function(c) {
-                return c.value === cookie.value;
-            })) {
-                // Discovered that the cookie that we wanted to delete has not been
-                // deleted. Assume that this is because of bug 1362834 or 1381197.
-                var error = 'Cannot delete Google\'s NID cookie because the cookie is invisible.';
-                if (!/Android/.test(navigator.userAgent)) {
-                    error += ' Visit about:preferences#privacy to delete it.';
-                }
-                callback(error);
-            } else {
-                // All good!
-                callback();
-            }
-        });
     }
 
     function maybeHandleFirefoxBug1388873(details, newCookie, callback) {

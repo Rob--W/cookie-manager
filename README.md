@@ -56,8 +56,8 @@ default settings.
 When First Party Isolation is enabled (this is the case in the TOR Browser),
 the work-around is needed, until https://bugzil.la/1381197 is fixed.
 
-The cookie manager may show a "NID" cookie for the google.com domain, but
-not have the ability to modify it. This is because the cookie is in a cookie jar
+And until https://bugzil.la/1381197 is fixed, a "NID" cookie for the google.com
+is hidden from the cookie manager. This is because the cookie is in a cookie jar
 used for Safebrowsing, and this jar is completely isolated from the rest of the
 browser, including extensions (https://bugzil.la/1362834).
 
