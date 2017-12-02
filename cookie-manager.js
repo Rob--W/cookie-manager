@@ -892,14 +892,8 @@ function renderCookie(cookiesOut, cookie) {
             if (chrome.runtime.lastError) {
                 resolve(chrome.runtime.lastError.message);
             } else {
-                maybeHandleFirefoxBug1388873(details, newCookie, function(error) {
-                    if (error) {
-                        resolve(error);
-                        return;
-                    }
-                    row.cmApi.setDeleted(true);
-                    resolve();
-                });
+                row.cmApi.setDeleted(true);
+                resolve();
             }
         });
     }
@@ -929,31 +923,6 @@ function renderCookie(cookiesOut, cookie) {
         if (!cookie.session) details.expirationDate = cookie.expirationDate;
         details.storeId = cookie.storeId;
         return details;
-    }
-
-    function maybeHandleFirefoxBug1388873(details, newCookie, callback) {
-        // Work-around to cookies still being in the database but not expired.
-        // These are visible to cookies.getAll - https://bugzil.la/1388873
-        if (!newCookie || newCookie.expirationDate !== cookie.expirationDate) {
-            // Cookie was successfully deleted.
-            callback();
-            return;
-        }
-        console.log('Temporarily unexpiring cookie to forcibly remove it (bug 1388873).');
-        // The work-around is to first unexpire the cookie,
-        // and then to try and expire it again.
-        details.expirationDate = Date.now() / 1000 + 60;
-        chrome.cookies.set(details, function() {
-            details.expirationDate = 0;
-            chrome.cookies.set(details, function(newCookie2) {
-                if (!newCookie2 || newCookie2.expirationDate !== cookie.expirationDate) {
-                    callback();
-                } else {
-                    callback('Cannot delete an already-expired cookie. ' +
-                        'The browser will automatically remove it in the future.');
-                }
-            });
-        });
     }
 }
 function bindKeyboardToRow(row) {

@@ -157,12 +157,47 @@ if (typeof browser !== 'undefined') {
 
     // It's assumed that the |cookie| parameter is not modified by the caller after calling us.
     chrome.cookies.set = function(cookie, callback) {
+        function setWithCookiesAPI() {
+            if (!('expirationDate' in cookie) || cookie.expirationDate > Date.now() / 1000) {
+                cookiesSet(cookie, callback);
+                return;
+            }
+            // Requesting to delete cookie. Need to check whether it was really deleted.
+            // Work-around to cookies still being in the database but not expired.
+            // These are visible to cookies.getAll - https://bugzil.la/1388873
+            cookiesSet(cookie, function(newCookie) {
+                if (!newCookie) {
+                    console.log(newCookie, cookie);
+                    // Successfully modified.
+                    callback(newCookie);
+                    return;
+                }
+                console.log('Temporarily unexpiring cookie to forcibly remove it (bug 1388873).');
+                // The work-around is to first unexpire the cookie,
+                // and then to try and expire it again.
+                newCookie = Object.assign({}, cookie);
+                cookie.expirationDate = Date.now() / 1000 + 60;
+                cookiesSet(cookie, function() {
+                    cookie.expirationDate = 0;
+                    cookiesSet(cookie, function(newCookie2) {
+                        if (!newCookie2) {
+                            callback(newCookie2);
+                        } else {
+                            withLastError(callback, {
+                                message: 'Cannot delete an already-expired cookie. ' +
+                                'The browser will automatically remove it in the future.',
+                            });
+                        }
+                    });
+                });
+            });
+        }
         if (!isPrivate(cookie)) {
-            cookiesSet(cookie, callback);
+            setWithCookiesAPI();
             return;
         }
         runWithoutPrivateCookieBugs(function() {
-            cookiesSet(cookie, callback);
+            setWithCookiesAPI();
         }, function() {
             queueRequestToSetCookies(cookie, callback);
         });
