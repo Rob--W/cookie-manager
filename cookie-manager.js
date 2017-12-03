@@ -17,7 +17,7 @@ document.getElementById('searchform').onsubmit = function(e) {
 
 chrome.extension.isAllowedIncognitoAccess(function(isAllowedAccess) {
     if (!isAllowedAccess) {
-        var introContainer = document.querySelector('.no-results');
+        var introContainer = document.querySelector('.no-results td');
         introContainer.insertAdjacentHTML(
             'beforeend',
             '<br>To see incognito cookies, visit <a class="ext-settings"></a>' +
@@ -39,7 +39,7 @@ chrome.extension.isAllowedIncognitoAccess(function(isAllowedAccess) {
     }
 });
 function getAllCookieRows() {
-    if (document.querySelector('#result .no-results')) {
+    if (document.querySelector('#result.no-results')) {
         return [];
     }
     return Array.from(document.getElementById('result').tBodies[0].rows);
@@ -679,7 +679,6 @@ function doSearch() {
                 cell.style.whiteSpace = 'pre-wrap';
                 cell.textContent = errors.join('\n');
             }
-            cell.className = 'no-results';
         } else {
             cookies.forEach(function(cookie) {
                 renderCookie(cookiesOut, cookie);
@@ -687,6 +686,7 @@ function doSearch() {
         }
 
         var result = document.getElementById('result');
+        result.classList.toggle('no-results', hasNoCookies);
         result.replaceChild(cookiesOut, result.tBodies[0]);
 
         updateButtonView();
@@ -808,6 +808,7 @@ cookieValidators.expirationDate = function(expirationDate) {
 };
 
 
+
 /**
  * Render the cookies in a table
  * @param cookiesOut HTMLTableSectionElement (e.g. a tbody)
@@ -815,6 +816,7 @@ cookieValidators.expirationDate = function(expirationDate) {
  */
 function renderCookie(cookiesOut, cookie) {
     var row = cookiesOut.insertRow(-1);
+    row.appendChild(document.getElementById('cookie_row_template').content.cloneNode(true));
     row.onclick = function() {
         this.classList.toggle('highlighted');
         updateButtonView();
@@ -839,10 +841,10 @@ function renderCookie(cookiesOut, cookie) {
         // The resolution value is an error string if an error occurs.
         return new Promise(restoreCookie);
     };
-    row.insertCell(0).textContent = cookie.name;
-    row.insertCell(1).textContent = cookie.value;
-    row.insertCell(2).textContent = cookie.domain;
-    row.insertCell(3).textContent = cookie.path;
+    row.querySelector('.name_').textContent = cookie.name;
+    row.querySelector('.valu_').textContent = cookie.value;
+    row.querySelector('.doma_').textContent = cookie.domain;
+    row.querySelector('.path_').textContent = cookie.path;
 
     var extraInfo = [];
     // Not sure if host-only should be added
@@ -854,7 +856,7 @@ function renderCookie(cookiesOut, cookie) {
     if (cookie.sameSite === 'lax') extraInfo.push('SameSite=lax');
     else if (cookie.sameSite === 'strict') extraInfo.push('SameSite=strict');
     extraInfo = extraInfo.join(', ');
-    row.insertCell(4).textContent = extraInfo;
+    row.querySelector('.flag_').textContent = extraInfo;
 
     var expiryInfo;
     if (cookie.session) {
@@ -862,25 +864,20 @@ function renderCookie(cookiesOut, cookie) {
     } else {
         expiryInfo = formatDate(new Date(cookie.expirationDate*1000));
     }
-    row.insertCell(5).textContent = expiryInfo;
+    var expiCell = row.querySelector('.expi_');
+    expiCell.textContent = expiryInfo;
     if (cookie.expirationDate < Date.now() / 1000) {
-        row.cells[5].title =
+        expiCell.title =
             'This cookie has already been expired and will not be sent to websites.\n' +
             'To explicitly delete it, select the cookie and click on the Remove button.';
-        row.cells[5].style.cursor = 'help';
-        row.cells[5].style.color = 'red';
+        expiCell.style.cursor = 'help';
+        expiCell.style.color = 'red';
     }
 
-    var actionButtonsCell = row.insertCell(6);
-    actionButtonsCell.className = 'action-buttons';
-    var editButton = document.createElement('button');
-    editButton.className = 'edit-single-cookie';
-    editButton.textContent = 'Edit';
-    editButton.onclick = function(event) {
+    row.querySelector('.edit-single-cookie').onclick = function(event) {
         event.stopPropagation();
         renderEditCookieForm(cookie, row);
     };
-    actionButtonsCell.appendChild(editButton);
 
     bindKeyboardToRow(row);
 

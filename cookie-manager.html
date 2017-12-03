@@ -39,21 +39,31 @@
     </div>
 </form>
 
-<table id="result">
+<template id="cookie_row_template">
+<td><div class="cell-content name_"></div></td>
+<td><div class="cell-content valu_"></div></td>
+<td><div class="cell-content doma_"></div></td>
+<td><div class="cell-content path_"></div></td>
+<td><div class="cell-content flag_"></div></td>
+<td><div class="cell-content expi_"></div></td>
+<td class="action-buttons"><button class="edit-single-cookie">Edit</button></td>
+</template>
+
+<table id="result" class="no-results">
     <thead>
         <tr>
-            <th>Name</th>
-            <th>Value</th>
-            <th>Domain</th>
-            <th>Path</th>
-            <th>Flags</th>
-            <th>Expiry date</th>
-            <th><!-- Action buttons --></th>
+            <th class="col_name"><span>Name</span></th>
+            <th class="col_valu"><span>Value</span></th>
+            <th class="col_doma"><span>Domain</span></th>
+            <th class="col_path"><span>Path</span></th>
+            <th class="col_flag"><span>Flags</span></th>
+            <th class="col_expi"><span>Expiry date</span></th>
+            <th class="col_butt"><!-- Action buttons --></th>
         </tr>
     </thead>
     <tbody>
         <tr>
-            <td colspan="7" class="no-results">
+            <td colspan="7">
 Use the form to compose a search query.
 Wildcards (*) are supported for every field.
 Blank fields are ignored in the query.

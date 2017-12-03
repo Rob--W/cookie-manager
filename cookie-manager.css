@@ -1,6 +1,14 @@
 * {
     box-sizing: border-box;
 }
+
+body {
+    /* TODO: If you ever decide to change the font, check the media
+     * queries that use the "ch" unit, since the "ch" unit for media
+     * queries does not account for the overridden font. */
+    font-size: 1rem;
+}
+
 #searchform > * {
     display: inline-block;
     padding: 0.5em;
@@ -80,26 +88,46 @@ body.editing-cookie {
 
 
 table {
+    table-layout: fixed;
     border-collapse: collapse;
-    white-space: pre-wrap;
     width: 100%;
 }
-.no-results {
+th {
+    /* we want the th's to have the same font style as the td, so that the
+     * "ch" unit of the "th" is equal to the "ch" unit of the "td". */
+    font-weight: normal;
+}
+th span {
+    font-weight: bold;
+}
+
+
+table.no-results {
     text-align: center;
     font-style: italic;
+    white-space: pre-wrap;
+    min-width: auto;
 }
+table.no-results thead {
+    display: none;
+}
+
 tbody tr {
     border-top: 1px solid #DDD;
 }
 tbody tr:hover {
     outline: 1px solid orange;
 }
-td:nth-child(1) /* name */,
-td:nth-child(2) /* value */,
-td:nth-child(3) /* domain */,
-td:nth-child(4) /* path */ {
+.cell-content {
+    box-sizing: content-box;
+    white-space: normal;
+    overflow-x: hidden;
+}
+.name_,
+.valu_,
+.doma_,
+.path_ {
     word-break: break-all;
-    min-width: 120px;
 }
 th:nth-child(even),
 td:nth-child(even) {
@@ -118,11 +146,17 @@ td:nth-child(even) {
 .highlighted td:nth-child(even) {
     background-color: #FF6;
 }
+.action-buttons {
+    text-align: center;
+}
 .action-buttons button {
-    box-sizing: content-box;
-    display: block;
-    padding-left: 0;
-    padding-right: 0;
+    /* cell-content's height is at least 3em.
+     * Two buttons should fit in this space, so 1.5em per button.
+     * One line height is 1.2em, so we have 0.3em left for padding + border. */
+    padding: 0.15em 1ch;
+    border: 1px outset black;
+    /* for "Restore" (or "Edit"). */
+    max-width: 8ch;
 }
 .cookie-removed .action-buttons button {
     visibility: hidden;
@@ -154,3 +188,55 @@ td:nth-child(even) {
         font-size: 0.6em; /* fit 3 visible lines in the button */
     }
 }
+
+@media (min-width: 100ch) {
+    table {min-width: 100ch; } /* sum of all columns = 85, allow at least 15ch for value */
+    .col_name { width: 20ch; } /* cookie names are typically not that long */
+    .col_valu { width: auto; } /* take the rest of the space - min width is enforced in table's min-width */
+    .col_doma { width: 20ch; } /* domains are significant, try to fit them all */
+    .col_path { width: 15ch; } /* often just a slash. Not really important. */
+    .col_flag { width: 11ch; } /* big enough to fit httpOnly, private, secure and containerTab */
+    .col_expi { width: 11ch; } /* big enough to fit a date and split the time to the next line */
+    .col_butt { width:  8ch; } /* big enough to fit a edit/restore button. */
+    .cell-content {
+        /* 2.5 lines (assuming line-height:1.2): */
+        max-height: 3em;
+        padding-left: 1ch;
+    }
+}
+
+/* NOTE: media queries' ch unit is based on the initial font size, disregarding any overrides. */
+/* On Firefox Mobile (57), for instance, 1ch = 10px) */
+@media (max-width:100ch) {
+    /* allow auto-sized cells to be at least 11in each */
+    table {min-width: 74ch;}
+    .col_name { width: auto; }
+    .col_valu { width: auto; }
+    .col_doma { width: auto; }
+    .col_path { width: auto; }
+    .col_flag { width: 11ch; }
+    .col_expi { width: 11ch; }
+    .col_butt { width:  8ch; }
+    .cell-content {
+        /* 3.5 lines (assuming line-height:1.2): */
+        max-height: 4.2em;
+        padding-left: 0.5ch;
+    }
+}
+@media (max-width:74ch) {
+    /* allow auto-sized cells to be at least 11in each */
+    table {min-width: 66ch;}
+    .col_name { width: auto; }
+    .col_valu { width: auto; }
+    .col_doma { width: auto; }
+    .col_path { width:  7ch; } /* The path is not really that important */
+    .col_flag { width:  7ch; } /* httpOnly, private and secure still fit without break */
+    .col_expi { width: 11ch; }
+    .col_butt { width:  8ch ;}
+    .cell-content {
+        /* 4.5 lines (assuming line-height:1.2): */
+        max-height: 5.4em;
+        padding-left: 1px;
+    }
+}
+
