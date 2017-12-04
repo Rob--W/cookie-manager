@@ -66,6 +66,18 @@ document.getElementById('select-none').onclick = function() {
     });
     updateButtonView();
 };
+document.getElementById('select-visible').onclick = function() {
+    getVisibleCookieRows(true).forEach(function(row) {
+        row.classList.add('highlighted');
+    });
+    updateButtonView();
+};
+document.getElementById('unselect-visible').onclick = function() {
+    getVisibleCookieRows(true).forEach(function(row) {
+        row.classList.remove('highlighted');
+    });
+    updateButtonView();
+};
 document.getElementById('remove-selected').onclick = function() {
     modifyCookieRows(false);
 };
@@ -104,6 +116,13 @@ function modifyCookieRows(shouldRestore) {
     });
 }
 
+
+function setButtonCount(buttonId, count) {
+    var button = document.getElementById(buttonId);
+    button.disabled = count === 0;
+    var countElem = button.querySelector('.count');
+    if (countElem) countElem.textContent = count;
+}
 function updateButtonView() {
     var allCookieRows = getAllCookieRows();
     var selectedCookieRows = allCookieRows.filter(isRowSelected);
@@ -111,17 +130,98 @@ function updateButtonView() {
         return row.cmApi.isDeleted();
     }).length;
 
-    function setButtonCount(buttonId, count) {
-        var button = document.getElementById(buttonId);
-        button.disabled = count === 0;
-        var countElem = button.querySelector('.count');
-        if (countElem) countElem.textContent = count;
-    }
+    // updateVisibleButtonView may require a recalc, so call this before updating the rest.
+    updateVisibleButtonView();
 
     setButtonCount('select-all', allCookieRows.length);
     setButtonCount('select-none', selectedCookieRows.length);
     setButtonCount('remove-selected', selectedCookieRows.length - deletedSelectionCount);
     setButtonCount('restore-selected', deletedSelectionCount);
+}
+function updateVisibleButtonView() {
+    _throttledVisIsThrottled = false;  // can be set to true in updateVisibleButtonViewThrottled.
+
+    var visibleCookieRows = getVisibleCookieRows();
+    var selectedVisibleCookieRows = visibleCookieRows.filter(isRowSelected);
+
+    setButtonCount('select-visible', visibleCookieRows.length);
+    setButtonCount('unselect-visible', selectedVisibleCookieRows.length);
+}
+var _throttledVisTimer;
+var _throttledVisIsThrottled = false;
+function updateVisibleButtonViewThrottled() {
+    // Throttle for use in scroll events, etc.
+    if (_throttledVisTimer) {
+        _throttledVisIsThrottled = true; // will be set to false in updateVisibleButtonView.
+    } else {
+        updateVisibleButtonView();
+        _throttledVisTimer = setTimeout(function() {
+            _throttledVisTimer = null;
+            if (_throttledVisIsThrottled) {
+                updateVisibleButtonView();
+            }
+        }, 500);
+        // ^ Frequent updates is not that important, since the rows' heights are constrained,
+        // so the number of visible items is more or less the same.
+    }
+}
+
+var _visibleCookieRows;
+function getVisibleCookieRows(forceRecalc = false) {
+    if (!_visibleCookieRows || forceRecalc) {
+        // Calculating the visible rows is relatively expensive.
+        // To avoid layout trashing, the list of visible rows is cached.
+        _visibleCookieRows = getVisibleCookieRowsWithRecalc_();
+        Promise.resolve().then(function() {
+            _visibleCookieRows = null;
+        });
+    }
+    return _visibleCookieRows;
+}
+// Do not use getVisibleCookieRowsWithRecalc_. Use getVisibleCookieRows(true) instead.
+function getVisibleCookieRowsWithRecalc_() {
+    var tableRect = document.getElementById('result').tBodies[0].getBoundingClientRect();
+    var bottomOffset = document.getElementById('footer-controls').getBoundingClientRect().top;
+    var minimumVisibleRowHeight = document.querySelector('#result thead > tr').offsetHeight;
+
+    var visibleCenter = tableRect.left + tableRect.width / 2;
+    var visibleTop = Math.max(0, tableRect.top) + minimumVisibleRowHeight;
+    var visibleBottom = Math.min(bottomOffset, tableRect.bottom) - minimumVisibleRowHeight;
+    if (visibleTop >= visibleBottom) {
+        // That must be a very narrow screen, for the result table to not fit...
+        return [];
+    }
+
+    function getRowAt(x, y) {
+        var cell = document.elementsFromPoint(x, y).find(e => e.tagName === 'TD');
+        return cell && cell.parentNode;
+    }
+    var topRow = getRowAt(visibleCenter, visibleTop);
+    var bottomRow = getRowAt(visibleCenter, visibleBottom);
+    if (!topRow) {
+        console.info('getVisibleCookieRows did not find a top row');
+        return [];
+    }
+    if (!bottomRow) {
+        console.info('getVisibleCookieRows did not find a bottom row');
+        return [];
+    }
+    if (topRow.parentNode !== bottomRow.parentNode) {
+        console.error('getVisibleCookieRows found rows from different parents!');
+        return [];
+    }
+    if (topRow.rowIndex > bottomRow.rowIndex) {
+        console.error('getVisibleCookieRows found the top row after the bottom row!');
+        return [];
+    }
+    var visibleCookieRows = [];
+    for (var row = topRow; row && row !== bottomRow; row = row.nextElementSibling) {
+        visibleCookieRows.push(row);
+    }
+    if (topRow !== bottomRow) {
+        visibleCookieRows.push(bottomRow);
+    }
+    return visibleCookieRows;
 }
 function setEditSaveEnabled(canSave) {
     var editSaveButton = document.getElementById('edit-save');
@@ -198,10 +298,21 @@ var OtherActionsController = {
     },
 
     bulk_select_all() {
+        document.getElementById('select-all').hidden = false;
+        document.getElementById('select-none').hidden = false;
+        document.getElementById('select-visible').hidden = true;
+        document.getElementById('unselect-visible').hidden = true;
+        window.removeEventListener('scroll', updateVisibleButtonViewThrottled);
+        window.removeEventListener('resize', updateVisibleButtonViewThrottled);
     },
 
     bulk_select_some() {
-        alert("Selection of visible cookies only not implemented yet.");
+        document.getElementById('select-all').hidden = true;
+        document.getElementById('select-none').hidden = true;
+        document.getElementById('select-visible').hidden = false;
+        document.getElementById('unselect-visible').hidden = false;
+        window.addEventListener('scroll', updateVisibleButtonViewThrottled);
+        window.addEventListener('resize', updateVisibleButtonViewThrottled);
     },
 };
 
