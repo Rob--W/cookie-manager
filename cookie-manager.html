@@ -146,6 +146,32 @@ By <a href="https://robwu.nl">Rob Wu</a>. Source code: <a href="https://github.c
 <button id="select-none">Select none</button>
 <button id="remove-selected">Remove selected (<span class="count"></span>)</button>
 <button id="restore-selected">Restore selected (<span class="count"></span>)</button>
+<select id="other-action">
+    <option selected disabled>More actions</option>
+    <optgroup label="Import / export">
+        <option value="bulk_export">Export selected cookies</option>
+        <option value="bulk_import">Import cookies</option>
+    </optgroup>
+    <!-- &#x25C9; is a black dot with a circle around,
+         &#x25CC; is a dotted circle. These values are also used in the JS code.
+    -->
+    <optgroup label="Workflow (button behavior)">
+        <option value="workflow_remove" >&#x25C9; Button = Remove selected cookies</option>
+        <!-- TODO: Implement protected cookies - see #3 on Github -->
+        <option value="workflow_whitelist">&#x25CC; Button = Whitelist selected cookies</option>
+    </optgroup>
+    <optgroup label="Bulk selection">
+        <option value="bulk_select_all" >&#x25C9; Select all = select all results</option>
+        <option value="bulk_select_some">&#x25CC; Select all = select visible results</option>
+    </optgroup>
+    <!--
+    <optgroup label="Cookie click behavior">
+        <option>&#x25C9; Click cookie = Toggle selection</option>
+        <option>&#x25CC; Click cookie = Edit</option>
+        <option>&#x25CC; Click cookie = Remove</option>
+    </optgroup>
+    -->
+</select>
 <button id="show-new-form">New cookie</button>
 
 <button id="edit-save" class="editbutton" form="editform">Save</button>

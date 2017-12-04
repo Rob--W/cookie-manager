@@ -78,6 +78,7 @@ body.editing-cookie {
 .editing-cookie #editform {
     display: block;
 }
+.editing-cookie #footer-controls > select,
 .editing-cookie #footer-controls > button:not(.editbutton),
 #footer-controls > button.editbutton {
     display: none;
@@ -162,6 +163,10 @@ td:nth-child(even) {
     visibility: hidden;
 }
 
+#other-action {
+    font-size: 1rem;
+}
+
 .footer-space {
     height: 3em;
 }
@@ -178,6 +183,7 @@ td:nth-child(even) {
 
     display: flex;
 }
+#footer-controls > select,
 #footer-controls > button {
     flex: 1;
     margin: 0 1px 1px;

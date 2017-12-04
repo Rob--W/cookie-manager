@@ -5,6 +5,7 @@
 /* globals browser */
 /* globals console */
 /* jshint browser: true */
+/* jshint esversion: 6 */ // TODO: Make more use of ES6 for prettier code.
 'use strict';
 
 var ANY_COOKIE_STORE_ID = '(# of any cookie jar)';
@@ -153,6 +154,57 @@ updateCookieStoreIds().then(function() {
     }
 });
 window.addEventListener('focus', updateCookieStoreIds);
+
+document.getElementById('other-action').onchange = function() {
+    var option = this.options[this.selectedIndex];
+    // We always select the first option again.
+    this.selectedIndex = 0;
+
+    var FILLED_DOT = '\u25C9';
+    var HOLLOW_DOT = '\u25CC';
+    if (option.textContent.startsWith(FILLED_DOT)) {
+        // Radio choice not changed - nothing to do.
+        return;
+    }
+    if (option.textContent.startsWith(HOLLOW_DOT)) {
+        // If the current selection is a hollow dot, then we have
+        // changed the selection.
+        option.textContent = option.textContent.replace(HOLLOW_DOT, FILLED_DOT);
+        Array.from(option.parentNode.children).filter(function(opt) {
+            return opt !== option;
+        }).forEach(function(opt) {
+            opt.textContent = opt.textContent.replace(FILLED_DOT, HOLLOW_DOT);
+        });
+    }
+
+    // Will throw if you add a new option in the HTML but forget to implement it below.
+    OtherActionsController[option.value]();
+};
+
+var OtherActionsController = {
+    bulk_export() {
+        alert("Exporting cookies not implemented yet.");
+    },
+
+    bulk_import() {
+        alert("Importing cookies not implemented yet.");
+    },
+
+    workflow_remove() {
+    },
+
+    workflow_whitelist() {
+        alert("Whitelisting cookies not implemented yet.");
+    },
+
+    bulk_select_all() {
+    },
+
+    bulk_select_some() {
+        alert("Selection of visible cookies only not implemented yet.");
+    },
+};
+
 
 // Add/edit cookie functionality
 document.getElementById('show-new-form').onclick = function() {
