@@ -351,8 +351,10 @@ var OtherActionsController = {
 };
 
 var WhitelistManager = {
-    /// TODO: Save to storage.
     _cached: new Map(),
+    _initPromise: null,
+    _throttledSync: null,
+    _dirty: false,
     _locked: true,
 
     _getDomain(cookie) {
@@ -364,6 +366,59 @@ var WhitelistManager = {
         return new URL(cookie.url).hostname;
     },
 
+    _serialize() {
+        var serializable = Object.create(null);
+        WhitelistManager._cached.forEach(function(list, domain) {
+            serializable[domain] = Array.from(list);
+        });
+        return JSON.stringify(serializable);
+    },
+
+    _load(serialized) {
+        var serializable = JSON.parse(serialized);
+        WhitelistManager._cached.clear();
+        Object.keys(serializable).forEach(function(domain) {
+            WhitelistManager._cached.set(domain, new Set(serializable[domain]));
+        });
+    },
+
+    _sync() {
+        WhitelistManager._dirty = true;
+        clearTimeout(WhitelistManager._throttledSync);
+        WhitelistManager._throttledSync = setTimeout(WhitelistManager._syncImmediate, 1000);
+    },
+
+    _syncImmediate() {
+        if (!WhitelistManager._dirty) return;
+
+        // TODO: When multiple Cookie Manager tabs are used, we get problems...
+        var serialized = WhitelistManager._serialize();
+        WhitelistManager._dirty = false;
+        chrome.storage.local.set({
+            cookieWhitelist: serialized,
+        });
+    },
+
+    initialize() {
+        if (!WhitelistManager._initPromise) {
+            WhitelistManager._initPromise = new Promise(function(resolve) {
+                chrome.storage.local.get({
+                    cookieWhitelist: '',
+                }, function(items) {
+                    var serialized = items && items.cookieWhitelist;
+                    try {
+                        if (serialized) {
+                            WhitelistManager._load(serialized);
+                        }
+                    } finally {
+                        resolve();
+                    }
+                });
+            });
+        }
+        return WhitelistManager._initPromise;
+    },
+
     addToList(cookie) {
         var domain = WhitelistManager._getDomain(cookie);
         var list = WhitelistManager._cached.get(domain);
@@ -371,17 +426,20 @@ var WhitelistManager = {
             list = new Set();
             WhitelistManager._cached.set(domain, list);
         }
+        if (list.has(cookie.name)) return;
         list.add(cookie.name);
+        WhitelistManager._sync();
     },
 
     removeFromList(cookie) {
         var domain = WhitelistManager._getDomain(cookie);
         var list = WhitelistManager._cached.get(domain);
         if (list) {
-            list.delete(cookie.name);
+            if (!list.delete(cookie.name)) return;
             if (list.size === 0) {
                 WhitelistManager._cached.delete(domain);
             }
+            WhitelistManager._sync();
         }
     },
 
@@ -417,6 +475,8 @@ var WhitelistManager = {
         document.getElementById('show-new-form').hidden = !locked;
     }
 };
+
+
 
 document.getElementById('whitelist-unlock-yes').onclick = function() {
     document.getElementById('whitelist-unlock-yes').disabled = true;
@@ -899,6 +959,11 @@ function doSearch() {
                 });
             });
         });
+
+        // Not really a cookie promise, but before showing any cookie rows we need to ensure that
+        // the whitelist is initialized. We can do that here.
+        cookiePromises.push(WhitelistManager.initialize().then(() => []));
+
         Promise.all(cookiePromises).then(function(allCookies) {
             // Flatten [[...a], [...b], ...] to [...a, ...b, ...]
             allCookies = allCookies.reduce(function(a, b) {
