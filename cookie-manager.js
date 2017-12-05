@@ -84,6 +84,12 @@ document.getElementById('remove-selected').onclick = function() {
 document.getElementById('restore-selected').onclick = function() {
     modifyCookieRows(true);
 };
+document.getElementById('whitelist-selected').onclick = function() {
+    whitelistCookieRows(true);
+};
+document.getElementById('unwhitelist-selected').onclick = function() {
+    whitelistCookieRows(false);
+};
 
 function modifyCookieRows(shouldRestore) {
     var action = shouldRestore ? 'restore' : 'remove';
@@ -116,6 +122,22 @@ function modifyCookieRows(shouldRestore) {
     });
 }
 
+function whitelistCookieRows(shouldWhitelist) {
+    var allCookieRows = getAllCookieRows();
+    allCookieRows.filter(isRowSelected).forEach(function(row) {
+        if (shouldWhitelist) {
+            WhitelistManager.addToList(row.cmApi.rawCookie);
+        } else {
+            WhitelistManager.removeFromList(row.cmApi.rawCookie);
+        }
+    });
+    // The rows need to separately be updated, because there may be more than one cookie that
+    // matches a (domain, name) pair.
+    allCookieRows.forEach(function(row) {
+        row.cmApi.renderListState();
+    });
+    updateButtonView();
+}
 
 function setButtonCount(buttonId, count) {
     var button = document.getElementById(buttonId);
@@ -129,6 +151,9 @@ function updateButtonView() {
     var deletedSelectionCount = selectedCookieRows.filter(function(row) {
         return row.cmApi.isDeleted();
     }).length;
+    var whitelistedSelectionCount = selectedCookieRows.filter(function(row) {
+        return WhitelistManager.isWhitelisted(row.cmApi.rawCookie);
+    }).length;
 
     // updateVisibleButtonView may require a recalc, so call this before updating the rest.
     updateVisibleButtonView();
@@ -137,6 +162,8 @@ function updateButtonView() {
     setButtonCount('select-none', selectedCookieRows.length);
     setButtonCount('remove-selected', selectedCookieRows.length - deletedSelectionCount);
     setButtonCount('restore-selected', deletedSelectionCount);
+    setButtonCount('whitelist-selected', selectedCookieRows.length - whitelistedSelectionCount);
+    setButtonCount('unwhitelist-selected', whitelistedSelectionCount);
 }
 function updateVisibleButtonView() {
     _throttledVisIsThrottled = false;  // can be set to true in updateVisibleButtonViewThrottled.
@@ -291,10 +318,17 @@ var OtherActionsController = {
     },
 
     workflow_remove() {
+        document.getElementById('remove-selected').hidden = false;
+        document.getElementById('restore-selected').hidden = false;
+        document.getElementById('whitelist-selected').hidden = true;
+        document.getElementById('unwhitelist-selected').hidden = true;
     },
 
     workflow_whitelist() {
-        alert("Whitelisting cookies not implemented yet.");
+        document.getElementById('remove-selected').hidden = true;
+        document.getElementById('restore-selected').hidden = true;
+        document.getElementById('whitelist-selected').hidden = false;
+        document.getElementById('unwhitelist-selected').hidden = false;
     },
 
     bulk_select_all() {
@@ -314,6 +348,88 @@ var OtherActionsController = {
         window.addEventListener('scroll', updateVisibleButtonViewThrottled);
         window.addEventListener('resize', updateVisibleButtonViewThrottled);
     },
+};
+
+var WhitelistManager = {
+    /// TODO: Save to storage.
+    _cached: new Map(),
+    _locked: true,
+
+    _getDomain(cookie) {
+        if ('domain' in cookie) {
+            // Assuming that domain is already normalized to lower case.
+            var domain = cookie.domain;
+            return domain.startsWith('.') ? domain.slice(1) : domain;
+        }
+        return new URL(cookie.url).hostname;
+    },
+
+    addToList(cookie) {
+        var domain = WhitelistManager._getDomain(cookie);
+        var list = WhitelistManager._cached.get(domain);
+        if (!list) {
+            list = new Set();
+            WhitelistManager._cached.set(domain, list);
+        }
+        list.add(cookie.name);
+    },
+
+    removeFromList(cookie) {
+        var domain = WhitelistManager._getDomain(cookie);
+        var list = WhitelistManager._cached.get(domain);
+        if (list) {
+            list.delete(cookie.name);
+            if (list.size === 0) {
+                WhitelistManager._cached.delete(domain);
+            }
+        }
+    },
+
+    isWhitelisted(cookie) {
+        var domain = WhitelistManager._getDomain(cookie);
+        var list = WhitelistManager._cached.get(domain);
+        if (list) {
+            return list.has(cookie.name);
+        }
+        return false;
+    },
+
+    isModificationAllowed(cookie) {
+        return !this._locked || !WhitelistManager.isWhitelisted(cookie);
+    },
+
+    requestModification() {
+        var unlockPrompt = document.getElementById('whitelist-unlock-prompt');
+        if (unlockPrompt.hidden) {
+            unlockPrompt.hidden = false;
+            document.getElementById('whitelist-unlock-yes').disabled = false;
+            document.getElementById('whitelist-unlock-confirm').disabled = true;
+            document.getElementById('whitelist-unlock-no').focus();
+        }
+    },
+
+    setLocked(locked = true) {
+        this._locked = locked;
+        document.getElementById('whitelist-unlock-prompt').hidden = true;
+        document.getElementById('whitelist-lock-again').hidden = locked;
+        // To discourage the use of unlocked whitelisted cookies, disallow creation
+        // of new cookies. This also results in more space in the default button layout.
+        document.getElementById('show-new-form').hidden = !locked;
+    }
+};
+
+document.getElementById('whitelist-unlock-yes').onclick = function() {
+    document.getElementById('whitelist-unlock-yes').disabled = true;
+    document.getElementById('whitelist-unlock-confirm').disabled = false;
+};
+document.getElementById('whitelist-unlock-confirm').onclick = function() {
+    WhitelistManager.setLocked(false);
+};
+document.getElementById('whitelist-unlock-no').onclick = function() {
+    WhitelistManager.setLocked(true);
+};
+document.getElementById('whitelist-lock-again').onclick = function() {
+    WhitelistManager.setLocked(true);
 };
 
 
@@ -385,6 +501,11 @@ document.getElementById('editform').onsubmit = function(event) {
     }
     if (!('expirationDate' in newCookie)) {
         newCookie.session = true;
+    }
+
+    if (!WhitelistManager.isModificationAllowed(cookie)) {
+        WhitelistManager.requestModification();
+        return;
     }
 
     var rowToEdit = currentlyEditingCookieRow;
@@ -797,6 +918,13 @@ function doSearch() {
      * @return filtered and sorted cookies
      */
     function processAllCookies(cookies) {
+        var whitelistChoice = document.getElementById('.whitelist').value;
+        if (whitelistChoice) {  // If 'true' or 'false' instead of ''.
+            whitelistChoice = whitelistChoice === 'true' ? true : false;
+            cookies = cookies.filter(function(cookie) {
+                return whitelistChoice === WhitelistManager.isWhitelisted(cookie);
+            });
+        }
         // For filtering, deletion and restoration.
         cookies.forEach(function(cookie) {
             cookie.url = cookieToUrl(cookie);
@@ -1004,12 +1132,37 @@ function renderCookie(cookiesOut, cookie) {
         // The resolution value is an error string if an error occurs.
         return new Promise(restoreCookie);
     };
+    row.cmApi.renderListState = function() {
+        if (cookieIsWhitelisted === WhitelistManager.isWhitelisted(cookie)) {
+            return; // Common case, nothing to change;
+        }
+        cookieIsWhitelisted = !cookieIsWhitelisted;
+        var flagCell = row.querySelector('.flag_');
+        var flagCellText = flagCell.textContent;
+        if (cookieIsWhitelisted) {
+            if (flagCellText.length) {
+                flagCell.textContent = TEXT_FLAG_WHITELIST + TEXT_FLAG_SEPARATOR + flagCellText;
+            } else {
+                flagCell.textContent = TEXT_FLAG_WHITELIST;
+            }
+        } else {
+            // If flagCellText === TEXT_FLAG_WHITELIST, then .slice(...) returns an empty string.
+            flagCell.textContent = flagCellText.slice(
+                TEXT_FLAG_WHITELIST.length + TEXT_FLAG_SEPARATOR.length);
+        }
+    };
+
+    var TEXT_FLAG_SEPARATOR = ', ';
+    var TEXT_FLAG_WHITELIST = 'whitelist';
+    var cookieIsWhitelisted = WhitelistManager.isWhitelisted(cookie);
+
     row.querySelector('.name_').textContent = cookie.name;
     row.querySelector('.valu_').textContent = cookie.value;
     row.querySelector('.doma_').textContent = cookie.domain;
     row.querySelector('.path_').textContent = cookie.path;
 
     var extraInfo = [];
+    if (cookieIsWhitelisted) extraInfo.push(TEXT_FLAG_WHITELIST);
     // Not sure if host-only should be added
     if (cookie.secure) extraInfo.push('secure');
     if (cookie.httpOnly) extraInfo.push('httpOnly');
@@ -1018,7 +1171,8 @@ function renderCookie(cookiesOut, cookie) {
     else if (/^firefox-container-/.test(cookie.storeId)) extraInfo.push('containerTab');
     if (cookie.sameSite === 'lax') extraInfo.push('SameSite=lax');
     else if (cookie.sameSite === 'strict') extraInfo.push('SameSite=strict');
-    extraInfo = extraInfo.join(', ');
+
+    extraInfo = extraInfo.join(TEXT_FLAG_SEPARATOR);
     row.querySelector('.flag_').textContent = extraInfo;
 
     var expiryInfo;
@@ -1044,7 +1198,17 @@ function renderCookie(cookiesOut, cookie) {
 
     bindKeyboardToRow(row);
 
+    function shouldBlockModification(resolve) {
+        if (!WhitelistManager.isModificationAllowed(cookie)) {
+            WhitelistManager.requestModification();
+            resolve('Refused to modify a whitelisted cookie.');
+            return true;
+        }
+    }
     function deleteCookie(resolve) {
+        if (shouldBlockModification(resolve)) {
+            return;
+        }
         var details = getDetailsForCookiesSetAPI();
         details.value = '';
         details.expirationDate = 0;
@@ -1058,6 +1222,9 @@ function renderCookie(cookiesOut, cookie) {
         });
     }
     function restoreCookie(resolve) {
+        if (shouldBlockModification(resolve)) {
+            return;
+        }
         var details = getDetailsForCookiesSetAPI();
         chrome.cookies.set(details, function() {
             if (chrome.runtime.lastError) {

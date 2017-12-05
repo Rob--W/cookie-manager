@@ -72,6 +72,49 @@ body {
     color: red;
 }
 
+#whitelist-unlock-prompt {
+    z-index: 1; /* to be laid over the footer with the controls and buttons */
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.3);
+}
+.whitelist-unlocker-description {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    left: 0;
+    right: 0;
+    width: -moz-fit-content;
+    width: fit-content;
+    max-width: 60ch;
+    height: -moz-fit-content;
+    height: fit-content;
+    margin: auto;
+    border: solid;
+    padding: 1em;
+    background: white;
+    color: black;
+}
+#whitelist-unlock-yes,
+#whitelist-unlock-confirm {
+    height: 2rem;
+    width: 50%;
+    float: left;
+    clear: left;
+}
+#whitelist-unlock-no {
+    height: 4rem;
+    width: 50%;
+}
+#whitelist-lock-again {
+    /* TODO: Draw attention. */
+    color: blue;
+    font-weight: bold;
+}
+
 body.editing-cookie {
     overflow: hidden;
 }

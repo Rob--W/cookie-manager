@@ -35,7 +35,12 @@
     <div class="flex-grid">
         <select id=".storeId">
         </select>
-        <input type="submit" value="Search">
+        <select id=".whitelist">
+            <option value="" selected>Whitelist = any</option>
+            <option value="true">Whitelist = yes</option>
+            <option value="false">Whitelist = no</option>
+        </select>
+        <input type="submit" value="Search" style="flex:2">
     </div>
 </form>
 
@@ -123,6 +128,9 @@ By <a href="https://robwu.nl">Rob Wu</a>. Source code: <a href="https://github.c
     </fieldset>
     <fieldset>
         <legend>Flags</legend>
+        <!-- This flag is not here because the "whitelist" flag cannot uniquely be set for a cookie.
+        <label><input type="checkbox" id="editform.whitelist"> Whitelisted</label>
+        -->
         <label><input type="checkbox" id="editform.secure"> Secure</label>
         <label><input type="checkbox" id="editform.httpOnly"> httpOnly</label>
     </fieldset>
@@ -140,6 +148,29 @@ By <a href="https://robwu.nl">Rob Wu</a>. Source code: <a href="https://github.c
     </fieldset>
 </form>
 
+<div id="whitelist-unlock-prompt" hidden>
+    <div class="whitelist-unlocker-description">
+        You are trying to modify a whitelisted cookie.
+        By default, whitelisted cookies cannot be modified by the Cookie Manager.
+        <p>
+        To modify the cookie, you can either remove the cookie from the whitelist
+        (via the "More actions" menu, "Button = Whitelist selected cookies"),
+        or unlock access to whitelisted cookies to allow modification.
+        <p>
+        Do you want to <b>unlock whitelisted cookies</b> for modification?
+
+        <div>
+            <button id="whitelist-unlock-yes">Yes</button>
+            <button id="whitelist-unlock-confirm" disabled>Yes (confirm)</button>
+            <button id="whitelist-unlock-no">No</button>
+        </div>
+
+        <p>
+        When you have finished, click on the "Lock whitelisted cookies" button
+        at the bottom of the page.
+    </div>
+</div>
+
 <div class="footer-space"></div>
 <div id="footer-controls" class="footer-space">
 <button id="select-all">Select all (<span class="count"></span>)</button>
@@ -148,6 +179,8 @@ By <a href="https://robwu.nl">Rob Wu</a>. Source code: <a href="https://github.c
 <button id="unselect-visible" hidden>Unselect visible (<span class="count"></span>)</button>
 <button id="remove-selected">Remove selected (<span class="count"></span>)</button>
 <button id="restore-selected">Restore selected (<span class="count"></span>)</button>
+<button id="whitelist-selected" hidden>Whitelist selected (<span class="count"></span>)</button>
+<button id="unwhitelist-selected" hidden>Unwhitelist selected (<span class="count"></span>)</button>
 <select id="other-action">
     <option selected disabled>More actions</option>
     <optgroup label="Import / export">
@@ -159,7 +192,6 @@ By <a href="https://robwu.nl">Rob Wu</a>. Source code: <a href="https://github.c
     -->
     <optgroup label="Workflow (button behavior)">
         <option value="workflow_remove" >&#x25C9; Button = Remove selected cookies</option>
-        <!-- TODO: Implement protected cookies - see #3 on Github -->
         <option value="workflow_whitelist">&#x25CC; Button = Whitelist selected cookies</option>
     </optgroup>
     <optgroup label="Bulk selection">
@@ -174,6 +206,7 @@ By <a href="https://robwu.nl">Rob Wu</a>. Source code: <a href="https://github.c
     </optgroup>
     -->
 </select>
+<button id="whitelist-lock-again" hidden>Lock whitelisted cookies again</button>
 <button id="show-new-form">New cookie</button>
 
 <button id="edit-save" class="editbutton" form="editform">Save</button>
