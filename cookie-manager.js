@@ -1507,7 +1507,10 @@ cookieValidators.expirationDate = function(expirationDate) {
 function renderCookie(cookiesOut, cookie) {
     var row = cookiesOut.insertRow(-1);
     row.appendChild(document.getElementById('cookie_row_template').content.cloneNode(true));
-    row.onclick = function() {
+    row.onclick = function(event) {
+        if (event.altKey || event.ctrlKey || event.cmdKey || event.shiftKey) {
+            return;  // Do nothing if a key modifier was pressed.
+        }
         this.classList.toggle('highlighted');
         updateButtonView();
     };
@@ -1664,8 +1667,8 @@ function bindKeyboardToRow(row) {
         }
         switch (event.keyCode) {
         case 32: // Spacebar
-            // Toggle selection.
-            row.click();
+            row.classList.toggle('highlighted');
+            updateButtonView();
             break;
         case 38: // Arrow up
         case 40: // Arrow down
