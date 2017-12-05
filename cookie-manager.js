@@ -1660,9 +1660,11 @@ function bindKeyboardToRow(row) {
     row.onkeydown = function(event) {
         if (event.altKey ||
             event.ctrlKey ||
-            event.cmdKey ||
-            event.shiftKey) {
+            event.cmdKey) {
             // Do nothing if a key modifier was pressed.
+            return;
+        }
+        if (event.shiftKey && !isEmptyTextSelection()) {
             return;
         }
         switch (event.keyCode) {
@@ -1675,6 +1677,9 @@ function bindKeyboardToRow(row) {
             var next = event.keyCode === 40 ? row.nextElementSibling : row.previousElementSibling;
             if (next) {
                 next.focus();
+                if (event.shiftKey) {
+                    next.classList.toggle('highlighted', row.classList.contains('highlighted'));
+                }
             }
             break;
         case 46: // Delete
@@ -1701,6 +1706,12 @@ function bindKeyboardToRow(row) {
         }
     }
 }
+
+function isEmptyTextSelection() {
+    var sel = window.getSelection();
+    return !sel || sel.anchorNode === sel.focusNode && sel.anchorOffset === sel.focusOffset;
+}
+
 function cookieToUrl(cookie) {
     var url = '';
     url += cookie.secure ? 'https' : 'http';

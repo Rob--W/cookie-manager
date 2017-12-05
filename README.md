@@ -32,7 +32,13 @@ Currently the UI is optimized for use on mobile, and support for keyboard shortc
 the rows in the result table:
 
 - <kbd>Arrow up</kbd> Focus the previous cookie row.
+  * <kbd>Shift</kbd> + <kbd>Arrow up</kbd> Focus the previous cookie row and
+    extend the current selection (or lack thereof) to that row.
+    This shortcut is ignored when text has been selected.
 - <kbd>Arrow down</kbd> Focus the next cookie row.
+  * <kbd>Shift</kbd> + <kbd>Arrow down</kbd> Focus the next cookie row and
+    extend the current selection (or lack thereof) to that row.
+    This shortcut is ignored when text has been selected.
 - <kbd>Spacebar</kbd> Toggle selection of the focused row.
 - <kbd>Delete</kbd> Remove the focused cookie.
 
