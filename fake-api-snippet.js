@@ -84,9 +84,36 @@ window.chrome = {
     },
     storage: {
         local: {
-            get() {
-                // Don't call back - let's keep options.js uninitialized.
-            }
+            get(mixed, cb) {
+                var keys =
+                    typeof mixed === 'string' ? [mixed] :
+                    Array.isArray(mixed) ? mixed :
+                    mixed === null ? Object.keys(sessionStorage) :
+                    Object.keys(mixed);
+                function defaultItem(key) {
+                    try {
+                        if (typeof mixed === 'object' && mixed && key in mixed)
+                            return JSON.parse(JSON.stringify(mixed[key]));
+                    } catch (e) {}
+                }
+                var items = {};
+                keys.forEach(function(key) {
+                    try {
+                        var value = sessionStorage.getItem(key);
+                        items[key] = value === null ? defaultItem(key) : JSON.parse(value);
+                    } catch (e) {
+                        items[key] = defaultItem(key);
+                        console.error('fake storage.local.get failed to parse ' + key + ' : ' + e);
+                    }
+                });
+                cb(items);
+            },
+            set(items, cb) {
+                Object.keys(items).forEach(function(key) {
+                    sessionStorage[key] = JSON.stringify(items[key]);
+                });
+                cb();
+            },
         },
     },
     runtime: {
