@@ -852,10 +852,12 @@ var CookieExporter = {
             throw new Error('Invalid data: "cookies" array not found!');
         }
         for (var i = 0; i < cookies.length; ++i) {
-            var validationMessage = CookieExporter.validateCookieObject(cookies[i]);
+            var cookie = cookies[i];
+            var validationMessage = CookieExporter.validateCookieObject(cookie);
             if (validationMessage) {
                 throw new Error('Invalid cookie at index ' + i + ': ' + validationMessage);
             }
+            cookie.url = cookieToUrl(cookie);
         }
         return cookies;
     },
@@ -893,6 +895,9 @@ document.getElementById('export-cancel').onclick = function() {
 };
 document.getElementById('import-cancel').onclick = function() {
     document.getElementById('importform').reset();
+    document.querySelector('#importform progress').hidden = true;
+    document.getElementById('import-log').hidden = true;
+    document.getElementById('import-log').value = '';
     document.body.classList.remove('importing-cookies');
 };
 document.getElementById('exportform').onsubmit = function(event) {
@@ -967,6 +972,10 @@ document.getElementById('importform').onsubmit = function(event) {
             importError('Failed to import: ' + e.message);
             return;
         }
+        if (!cookies.length) {
+            importError('Failed to import: The list of cookies is empty');
+            return;
+        }
         WhitelistManager.initialize().then(function() {
             importParsedCookies(cookies);
         });
@@ -977,8 +986,46 @@ document.getElementById('importform').onsubmit = function(event) {
             WhitelistManager.requestModification();
             return;
         }
-        importOutput('TODO: Actually import with cookies.set');
+        var progressbar = document.querySelector('#importform progress');
+        progressbar.hidden = false;
+        progressbar.max = cookies.length;
+        progressbar.value = 0;
+        document.getElementById('import-log').hidden = false;
+
+        var progress = 0;
+        var failCount = 0;
+        cookies.forEach(function(cookie, i) {
+            if (cookie.expirationDate < Date.now() / 1000) {
+                onImportedOneCookie('Did not import cookie ' + i + ' because it has been expired.');
+                return;
+            }
+            var details = getDetailsForCookiesSetAPI(cookie);
+            chrome.cookies.set(details, function() {
+                var error = chrome.runtime.lastError;
+                onImportedOneCookie(error && 'Failed to import cookie ' + i + ': ' + error.message);
+            });
+        });
+
+        function onImportedOneCookie(error) {
+            if (error) {
+                document.getElementById('import-log').value += error + '\n';
+                ++failCount;
+            }
+            progressbar.value = ++progress;
+            if (progress !== cookies.length) {
+                return;
+            }
+            var message;
+            if (failCount) {
+                message = 'Imported ' + (cookies.length - failCount) + ' cookies, ' +
+                    'failed to import ' + failCount + ' cookies.';
+            } else {
+                message = 'Imported all ' + cookies.length + ' cookies.';
+            }
+            document.getElementById('import-log').value += message + '\n';
+        }
     }
+
     function importError(error) {
         importOutput('ERROR: ' + error);
     }
@@ -1516,7 +1563,7 @@ function renderCookie(cookiesOut, cookie) {
         if (shouldBlockModification(resolve)) {
             return;
         }
-        var details = getDetailsForCookiesSetAPI();
+        var details = getDetailsForCookiesSetAPI(cookie);
         details.value = '';
         details.expirationDate = 0;
         chrome.cookies.set(details, function(newCookie) {
@@ -1532,7 +1579,7 @@ function renderCookie(cookiesOut, cookie) {
         if (shouldBlockModification(resolve)) {
             return;
         }
-        var details = getDetailsForCookiesSetAPI();
+        var details = getDetailsForCookiesSetAPI(cookie);
         chrome.cookies.set(details, function() {
             if (chrome.runtime.lastError) {
                 resolve(chrome.runtime.lastError.message);
@@ -1541,22 +1588,6 @@ function renderCookie(cookiesOut, cookie) {
                 resolve();
             }
         });
-    }
-    function getDetailsForCookiesSetAPI() {
-        var details = {};
-        details.url = cookie.url;
-        details.name = cookie.name;
-        details.value = cookie.value;
-        if (!cookie.hostOnly) {
-            details.domain = cookie.domain;
-        }
-        details.path = cookie.path;
-        details.secure = cookie.secure;
-        details.httpOnly = cookie.httpOnly;
-        if (cookie.sameSite) details.sameSite = cookie.sameSite;
-        if (!cookie.session) details.expirationDate = cookie.expirationDate;
-        details.storeId = cookie.storeId;
-        return details;
     }
 }
 function bindKeyboardToRow(row) {
@@ -1633,6 +1664,26 @@ function cookieToUrl(cookie) {
     }
     url += cookie.path;
     return url;
+}
+/**
+ * @param cookie chrome.cookies.Cookie type extended with "url" key.
+ * @returns {object} A parameter for the cookies.set API.
+ */
+function getDetailsForCookiesSetAPI(cookie) {
+    var details = {};
+    details.url = cookie.url;
+    details.name = cookie.name;
+    details.value = cookie.value;
+    if (!cookie.hostOnly) {
+        details.domain = cookie.domain;
+    }
+    details.path = cookie.path;
+    details.secure = cookie.secure;
+    details.httpOnly = cookie.httpOnly;
+    if (cookie.sameSite) details.sameSite = cookie.sameSite;
+    if (!cookie.session) details.expirationDate = cookie.expirationDate;
+    details.storeId = cookie.storeId;
+    return details;
 }
 
 function urlWithoutPort(url) {

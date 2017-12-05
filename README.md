@@ -23,6 +23,7 @@ If you have suggestions or questions, open an issue at https://github.com/Rob--W
 - Supports the TOR Browser
 - Add cookies
 - Edit cookies
+- Import / export cookies
 
 
 ## Keyboard shortcuts
