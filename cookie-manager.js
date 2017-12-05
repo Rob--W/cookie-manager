@@ -352,6 +352,8 @@ var OtherActionsController = {
 
 var WhitelistManager = {
     _cached: new Map(),
+    _storageLastChanged: 0,
+    _initialized: false,
     _initPromise: null,
     _throttledSync: null,
     _dirty: false,
@@ -391,27 +393,38 @@ var WhitelistManager = {
     _syncImmediate() {
         if (!WhitelistManager._dirty) return;
 
-        // TODO: When multiple Cookie Manager tabs are used, we get problems...
         var serialized = WhitelistManager._serialize();
         WhitelistManager._dirty = false;
+        WhitelistManager._storageLastChanged = Date.now();
         chrome.storage.local.set({
+            lastChanged: WhitelistManager._storageLastChanged,
             cookieWhitelist: serialized,
         });
     },
 
-    initialize() {
-        if (!WhitelistManager._initPromise) {
+    // Initialize the storage. The promise resolves with whether _cached was changed.
+    initialize(force = false) {
+        if (!WhitelistManager._initPromise || force && WhitelistManager._initialized) {
+            WhitelistManager._initialized = false;
             WhitelistManager._initPromise = new Promise(function(resolve) {
+                // TODO: Optimize by first looking up "lastChanged" to determine whether there is
+                // any updated data to look up.
                 chrome.storage.local.get({
+                    lastChanged: 0,
                     cookieWhitelist: '',
                 }, function(items) {
                     var serialized = items && items.cookieWhitelist;
+                    var lastChanged = items && items.lastChanged || 0;
+                    var didChange = lastChanged !== WhitelistManager._storageLastChanged;
+                    WhitelistManager._storageLastChanged = lastChanged;
+
                     try {
-                        if (serialized) {
+                        if (serialized && didChange) {
                             WhitelistManager._load(serialized);
                         }
                     } finally {
-                        resolve();
+                        WhitelistManager._initialized = true;
+                        resolve(didChange);
                     }
                 });
             });
@@ -476,6 +489,23 @@ var WhitelistManager = {
     }
 };
 
+// Synchronize the storage upon changing tabs, in case we use multiple storage managers and
+// modify the map from different pages. In theory this can have race conditions, where the whitelist
+// is modified while the tab is inactive. In practice this should not happen because we only modify
+// the whitelist in response to a user action.
+window.addEventListener('focus', function() {
+    WhitelistManager.initialize(true).then(function(didChange) {
+        if (didChange) {
+            updateButtonView();
+            getAllCookieRows().forEach(function(row) {
+                row.cmApi.renderListState();
+            });
+        }
+    });
+});
+window.addEventListener('blur', function() {
+    WhitelistManager._syncImmediate();
+});
 
 
 document.getElementById('whitelist-unlock-yes').onclick = function() {
