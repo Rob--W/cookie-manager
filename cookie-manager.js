@@ -10,6 +10,7 @@
 
 var ANY_COOKIE_STORE_ID = '(# of any cookie jar)';
 var currentlyEditingCookieRow = null;
+var _visibleCookieRows = null;
 
 document.getElementById('searchform').onsubmit = function(e) {
     e.preventDefault();
@@ -193,7 +194,6 @@ function updateVisibleButtonViewThrottled() {
     }
 }
 
-var _visibleCookieRows;
 function getVisibleCookieRows(forceRecalc = false) {
     if (!_visibleCookieRows || forceRecalc) {
         // Calculating the visible rows is relatively expensive.
@@ -250,6 +250,7 @@ function getVisibleCookieRowsWithRecalc_() {
     }
     return visibleCookieRows;
 }
+
 function setEditSaveEnabled(canSave) {
     var editSaveButton = document.getElementById('edit-save');
     editSaveButton.disabled = !canSave;
@@ -1362,12 +1363,24 @@ function doSearch() {
             });
         }
 
+        invalidateRowReferences();
+
         var result = document.getElementById('result');
         result.classList.toggle('no-results', hasNoCookies);
         result.replaceChild(cookiesOut, result.tBodies[0]);
 
         updateButtonView();
     }
+}
+
+function invalidateRowReferences() {
+    if (currentlyEditingCookieRow) {
+        // currentlyEditingCookieRow should be null because it should not be possible
+        // to invalidate the table rows while an edit form is being shown.
+        console.warn('currentlyEditingCookieRow should be null');
+    }
+
+    _visibleCookieRows = null;
 }
 
 // Utility functions.
