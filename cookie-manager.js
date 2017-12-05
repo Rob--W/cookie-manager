@@ -310,11 +310,11 @@ document.getElementById('other-action').onchange = function() {
 
 var OtherActionsController = {
     bulk_export() {
-        alert("Exporting cookies not implemented yet.");
+        document.body.classList.add('exporting-cookies');
     },
 
     bulk_import() {
-        alert("Importing cookies not implemented yet.");
+        document.body.classList.add('importing-cookies');
     },
 
     workflow_remove() {
@@ -789,6 +789,86 @@ Array.from(document.querySelectorAll('#editform label[for]')).forEach(function(r
         setEditSaveEnabled(true);
     };
 });
+
+
+// Import / export functionality.
+document.getElementById('export-cancel').onclick = function() {
+    document.getElementById('exportform').reset();
+    document.body.classList.remove('exporting-cookies');
+};
+document.getElementById('import-cancel').onclick = function() {
+    document.getElementById('importform').reset();
+    document.body.classList.remove('importing-cookies');
+};
+document.getElementById('exportform').onsubmit = function(event) {
+    event.preventDefault();
+    var exportType = document.querySelector('#exportform input[name="export-type"]:checked').value;
+
+    var text = 'TODO: Generate export';
+
+    if (exportType === 'file') {
+        // Trigger the download from a child frame to work around a Firefox bug where an attempt to
+        // load a blob:-URL causes the document to unload - https://bugzil.la/1420419
+        var f = document.createElement('iframe');
+        f.style.position = 'fixed';
+        f.style.left = f.style.top = '-999px';
+        f.style.width = f.style.height = '99px';
+        f.srcdoc = '<a download="cookies.json" target="_blank">cookies.json</a>';
+        f.onload = function() {
+            var blob = new Blob([text], {type: 'application/json'});
+            var a = f.contentDocument.querySelector('a');
+            a.href = f.contentWindow.URL.createObjectURL(blob);
+            a.click();
+            // Removing the frame document implicitly revokes the blob:-URL too.
+            setTimeout(function() { f.remove(); }, 2000);
+        };
+        document.body.appendChild(f);
+    } else {
+        document.getElementById('export-text').value = text;
+    }
+};
+
+document.getElementById('importform').onsubmit = function(event) {
+    event.preventDefault();
+    var importFile = document.getElementById('import-file').files[0];
+    if (importFile) {
+        var fr = new FileReader();
+        fr.onloadend = function() {
+            if (fr.error) {
+                importError('Failed to read file: ' + fr.error);
+            } else if (!fr.result) {
+                importError('Failed to import: Input file is empty!');
+            } else {
+                importText(fr.result);
+            }
+
+        };
+        fr.readAsText(importFile);
+    } else {
+        importText(document.getElementById('import-text').value);
+    }
+
+    function importText(text) {
+        if (!text) {
+            importError('Failed to import: You must select a file or use the text field.');
+            return;
+        }
+        var imported;
+        try {
+            imported = JSON.parse(text);
+        } catch (e) {
+            importError('Failed to import: Invalid JSON: ' + e);
+            return;
+        }
+        importOutput('TODO: Actually import');
+    }
+    function importError(error) {
+        importOutput('ERROR: ' + error);
+    }
+    function importOutput(msg) {
+        document.querySelector('#importform output').value = msg;
+    }
+};
 
 
 // Return a mapping from a cookieStoreId to a human-readable name.

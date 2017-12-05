@@ -32,6 +32,8 @@ body {
 }
 
 
+#exportform,
+#importform,
 #editform {
     position: fixed;
     top: 0;
@@ -70,6 +72,25 @@ body {
 }
 #editform #editform\.sessionFalseExpired:checked + span {
     color: red;
+}
+
+.stretched-textarea-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+}
+.stretched-textarea-container > div {
+    flex-shrink: 0;
+}
+.stretched-textarea-container > output {
+    flex-shrink: 0;
+    word-break: break-all;
+    display: block;
+}
+.stretched-textarea-container > textarea {
+    min-height: 6em;
+    height: 100%;
+    flex: 1;
 }
 
 #whitelist-unlock-prompt {
@@ -115,17 +136,29 @@ body {
     font-weight: bold;
 }
 
+body.exporting-cookies,
+body.importing-cookies,
 body.editing-cookie {
     overflow: hidden;
 }
+.exporting-cookies #exportform,
+.importing-cookies #importform,
 .editing-cookie #editform {
     display: block;
 }
+.exporting-cookies #footer-controls > select,
+.importing-cookies #footer-controls > select,
 .editing-cookie #footer-controls > select,
+.exporting-cookies #footer-controls > button:not(.exportbutton),
+.importing-cookies #footer-controls > button:not(.importbutton),
 .editing-cookie #footer-controls > button:not(.editbutton),
+#footer-controls > button.exportbutton,
+#footer-controls > button.importbutton,
 #footer-controls > button.editbutton {
     display: none;
 }
+.exporting-cookies #footer-controls > button.exportbutton,
+.importing-cookies #footer-controls > button.importbutton,
 .editing-cookie #footer-controls > button.editbutton {
     display: block;
 }

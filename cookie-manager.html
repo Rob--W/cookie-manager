@@ -148,6 +148,49 @@ By <a href="https://robwu.nl">Rob Wu</a>. Source code: <a href="https://github.c
     </fieldset>
 </form>
 
+<form id="exportform">
+    <fieldset class="stretched-textarea-container">
+        <legend>Export cookies</legend>
+        <div>
+            Choose the export format and click on the "Export" button to generate
+            the exported cookies.
+            <p>
+            When exported as a file, the exported data is downloaded as "cookies.json".<br>
+            When exported as text, the exported data is shown in the text field.
+        </div>
+        <div>
+            <label>
+                <input type="radio" name="export-type" value="file" required>
+                Export as file
+            </label>
+        </div>
+        <div>
+            <label>
+                <input type="radio" name="export-type" value="text" required>
+                Export as text:
+            </label>
+        </div>
+        <textarea id="export-text"></textarea>
+    </fieldset>
+</form>
+
+<form id="importform">
+    <fieldset class="stretched-textarea-container">
+        <legend>Import cookies</legend>
+        <div>
+            Select a file or paste the exported data (JSON) in the input field.
+            <p>
+            When you click on the "Import" button, all</em> cookies will be imported and
+            overwrite existing cookies, if any.
+        </div>
+        <output></output>
+        <div>
+            Import file: <input type="file" id="import-file"> or select text:
+        </div>
+        <textarea id="import-text"></textarea>
+    </fieldset>
+</form>
+
 <div id="whitelist-unlock-prompt" hidden>
     <div class="whitelist-unlocker-description">
         You are trying to modify a whitelisted cookie.
@@ -208,6 +251,12 @@ By <a href="https://robwu.nl">Rob Wu</a>. Source code: <a href="https://github.c
 </select>
 <button id="whitelist-lock-again" hidden>Lock whitelisted cookies again</button>
 <button id="show-new-form">New cookie</button>
+
+<button id="export-export" class="exportbutton" form="exportform">Export</button>
+<button id="export-cancel" class="exportbutton">Cancel</button>
+
+<button id="import-import" class="importbutton" form="importform">Import</button>
+<button id="import-cancel" class="importbutton">Cancel</button>
 
 <button id="edit-save" class="editbutton" form="editform">Save</button>
 <button id="edit-cancel" class="editbutton">Cancel</button>
