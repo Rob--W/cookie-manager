@@ -792,6 +792,100 @@ Array.from(document.querySelectorAll('#editform label[for]')).forEach(function(r
 
 
 // Import / export functionality.
+var CookieExporter = {
+    KEY_TYPES: {
+        name: ['string'],
+        value: ['string'],
+        domain: ['string'],
+        hostOnly: ['boolean'],
+        path: ['string'],
+        secure: ['boolean'],
+        httpOnly: ['boolean'],
+        session: ['boolean'],
+        // Optional if session is true:
+        expirationDate: ['number', 'undefined'],
+        storeId: ['string'],
+        // Chrome 51+
+        sameSite: ['string', 'undefined'],
+        // Firefox 59+ ? - https://bugzil.la/1381197
+        firstPartyDomain: ['string', 'undefined'],
+    },
+    get KEYS() {
+        var KEYS = Object.keys(CookieExporter.KEY_TYPES);
+        Object.defineProperty(CookieExporter, 'KEYS', {
+            configurable: true,
+            enumerable: true,
+            value: KEYS,
+        });
+        return KEYS;
+    },
+    // cookies is a list of chrome.cookie.Cookie objects.
+    serialize(cookies) {
+        // serialize() is called internally, so it should never fail. Still, perform some validation
+        // as a smoke test to help in debugging, if for some reason we ever export invalid data.
+        // To recover, we can apply a patch in deserialize to fixup the data if needed.
+        cookies.forEach(function(cookie, i) {
+            var validationMessage = CookieExporter.validateCookieObject(cookie);
+            if (validationMessage) {
+                console.warn('serialize: Invalid cookie at index ' + i + ': ' + validationMessage);
+            }
+        });
+        var serializedCookies = JSON.stringify(cookies, CookieExporter.KEYS, 1);
+        var exported = {
+            // Include extension and browser versions to allow old data to be migrated in the
+            // deserialize method, if needed in the future.
+            cookieManagerVersion: chrome.runtime.getManifest().version,
+            userAgent: navigator.userAgent,
+            cookies: 'placeholder',
+        };
+        return JSON.stringify(exported, null, 1).replace('"placeholder"', serializedCookies);
+    },
+    deserialize(serialized) {
+        var imported;
+        try {
+            imported = JSON.parse(serialized);
+        } catch (e) {
+            throw new Error('Invalid JSON: ' + e.message.replace(/^JSON\.parse: /, ''));
+        }
+        var cookies = imported.cookies;
+        if (!Array.isArray(cookies)) {
+            throw new Error('Invalid data: "cookies" array not found!');
+        }
+        for (var i = 0; i < cookies.length; ++i) {
+            var validationMessage = CookieExporter.validateCookieObject(cookies[i]);
+            if (validationMessage) {
+                throw new Error('Invalid cookie at index ' + i + ': ' + validationMessage);
+            }
+        }
+        return cookies;
+    },
+
+    // Do a basic validation of the cookie.
+    validateCookieObject(cookie) {
+        if (typeof cookie !== 'object')
+            return 'cookie has an invalid type. Expected object, got ' + typeof cookie;
+        if (cookie === null)
+            return 'cookie has an invalid type. Expected object, got null';
+
+        function typeofProp(key) {
+            return key in cookie ? typeof cookie[key] : 'undefined';
+        }
+
+        for (var key of CookieExporter.KEYS) {
+            var allowedTypes = CookieExporter.KEY_TYPES[key];
+            if (!allowedTypes.includes(typeofProp(key))) {
+                return 'cookie.' + key + ' has an invalid type. Expected ' + allowedTypes +
+                    ', got ' + typeofProp(key);
+            }
+        }
+        if (!cookie.session && typeofProp('expirationDate') !== 'number') {
+            return 'cookie.expirationDate has an invalid type. Expected number , got ' +
+                typeofProp(key);
+        }
+        // This is a very shallow validator. If the format is really that terrible, then
+        // cookies.set will reject with an error.
+    },
+};
 document.getElementById('export-cancel').onclick = function() {
     document.getElementById('exportform').reset();
     document.getElementById('export-text').hidden = true;
@@ -805,7 +899,10 @@ document.getElementById('exportform').onsubmit = function(event) {
     event.preventDefault();
     var exportType = document.querySelector('#exportform input[name="export-type"]:checked').value;
 
-    var text = 'TODO: Generate export';
+    var cookies = getAllCookieRows().filter(isRowSelected).map(function(row) {
+        return row.cmApi.rawCookie;
+    });
+    var text = CookieExporter.serialize(cookies);
 
     if (exportType === 'file') {
         // Trigger the download from a child frame to work around a Firefox bug where an attempt to
@@ -863,15 +960,14 @@ document.getElementById('importform').onsubmit = function(event) {
             importError('Failed to import: You must select a file or use the text field.');
             return;
         }
-        var imported;
+        var cookies;
         try {
-            imported = JSON.parse(text);
+            cookies = CookieExporter.deserialize(text);
         } catch (e) {
-            importError('Failed to import: Invalid JSON: ' +
-                e.message.replace(/^JSON\.parse: /, ''));
+            importError('Failed to import: ' + e.message);
             return;
         }
-        importOutput('TODO: Actually import');
+        importOutput('TODO: Actually import with cookies.set');
     }
     function importError(error) {
         importOutput('ERROR: ' + error);

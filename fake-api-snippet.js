@@ -118,6 +118,20 @@ window.chrome = {
     },
     runtime: {
         // Used for chrome.runtime.lastError
+
+        getManifest() {
+            try {
+                var x = new XMLHttpRequest();
+                x.open('get', 'manifest.json', false);
+                x.overrideMimeType('application/json');
+                x.send();
+                return JSON.parse(x.responseText);
+            } catch (e) {
+                return {
+                    version: '<fake-api-snippet>',
+                };
+            }
+        },
     },
     cookies: {
         getAllCookieStores(cb) {
