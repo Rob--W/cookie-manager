@@ -481,7 +481,7 @@ var WhitelistManager = {
     },
 
     isModificationAllowed(cookie) {
-        return !this._locked || !WhitelistManager.isWhitelisted(cookie);
+        return !WhitelistManager._locked || !WhitelistManager.isWhitelisted(cookie);
     },
 
     requestModification() {
@@ -495,7 +495,7 @@ var WhitelistManager = {
     },
 
     setLocked(locked = true) {
-        this._locked = locked;
+        WhitelistManager._locked = locked;
         document.getElementById('whitelist-unlock-prompt').hidden = true;
         document.getElementById('whitelist-lock-again').hidden = locked;
         // To discourage the use of unlocked whitelisted cookies, disallow creation
@@ -965,6 +965,16 @@ document.getElementById('importform').onsubmit = function(event) {
             cookies = CookieExporter.deserialize(text);
         } catch (e) {
             importError('Failed to import: ' + e.message);
+            return;
+        }
+        WhitelistManager.initialize().then(function() {
+            importParsedCookies(cookies);
+        });
+    }
+    function importParsedCookies(cookies) {
+        if (!cookies.every(WhitelistManager.isModificationAllowed)) {
+            importError('Failed to import: One or more cookies is locked by the whitelist.');
+            WhitelistManager.requestModification();
             return;
         }
         importOutput('TODO: Actually import with cookies.set');
