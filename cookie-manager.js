@@ -836,8 +836,10 @@ document.getElementById('importform').onsubmit = function(event) {
     if (importFile) {
         var fr = new FileReader();
         fr.onloadend = function() {
+            fr.onloadend = null;
             if (fr.error) {
-                importError('Failed to read file: ' + fr.error);
+                importError('Failed to read file: ' +
+                    (fr.error.message || fr.error.name || fr.error));
             } else if (!fr.result) {
                 importError('Failed to import: Input file is empty!');
             } else {
@@ -845,7 +847,13 @@ document.getElementById('importform').onsubmit = function(event) {
             }
 
         };
-        fr.readAsText(importFile);
+        try {
+            fr.readAsText(importFile);
+        } catch (e) {
+            fr.onloadend = null;
+            // Firefox may synchronously throw an Exception, e.g. when the file has been deleted.
+            importError('Failed to read file: ' + e);
+        }
     } else {
         importText(document.getElementById('import-text').value);
     }
@@ -859,7 +867,8 @@ document.getElementById('importform').onsubmit = function(event) {
         try {
             imported = JSON.parse(text);
         } catch (e) {
-            importError('Failed to import: Invalid JSON: ' + e);
+            importError('Failed to import: Invalid JSON: ' +
+                e.message.replace(/^JSON\.parse: /, ''));
             return;
         }
         importOutput('TODO: Actually import');
