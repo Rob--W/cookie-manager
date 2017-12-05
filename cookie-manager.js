@@ -310,6 +310,14 @@ document.getElementById('other-action').onchange = function() {
 
 var OtherActionsController = {
     bulk_export() {
+        var selectionCount = getAllCookieRows().filter(isRowSelected).length;
+        if (!selectionCount) {
+            alert('You have not selected any cookies to export.\n' +
+                'Please search for cookies and select some cookies before trying to export them.');
+            return;
+        }
+        document.getElementById('export-cookie-count').textContent = 
+            selectionCount + (selectionCount === 1 ? ' cookie' : ' cookies');
         document.body.classList.add('exporting-cookies');
     },
 
