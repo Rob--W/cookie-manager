@@ -894,7 +894,9 @@ document.getElementById('export-cancel').onclick = function() {
     document.body.classList.remove('exporting-cookies');
 };
 document.getElementById('import-cancel').onclick = function() {
+    _importFormInstanceCounter++;  // Invalidates existing import, if possible.
     document.getElementById('importform').reset();
+    document.getElementById('import-import').disabled = false;
     document.querySelector('#importform progress').hidden = true;
     document.getElementById('import-log').hidden = true;
     document.getElementById('import-log').value = '';
@@ -932,8 +934,13 @@ document.getElementById('exportform').onsubmit = function(event) {
     }
 };
 
+var _importFormInstanceCounter = 0;
 document.getElementById('importform').onsubmit = function(event) {
     event.preventDefault();
+    var importFormInstanceId = ++_importFormInstanceCounter;
+
+    importStarted();
+
     var importFile = document.getElementById('import-file').files[0];
     if (importFile) {
         var fr = new FileReader();
@@ -981,6 +988,11 @@ document.getElementById('importform').onsubmit = function(event) {
         });
     }
     function importParsedCookies(cookies) {
+        // One last chance to abort the import before actually (over)writing cookies.
+        if (importFormInstanceId !== _importFormInstanceCounter) {
+            console.log('Import was aborted because the form was closed.');
+            return;
+        }
         if (!cookies.every(WhitelistManager.isModificationAllowed)) {
             importError('Failed to import: One or more cookies is locked by the whitelist.');
             WhitelistManager.requestModification();
@@ -991,6 +1003,7 @@ document.getElementById('importform').onsubmit = function(event) {
         progressbar.max = cookies.length;
         progressbar.value = 0;
         document.getElementById('import-log').hidden = false;
+        document.getElementById('import-cancel').disabled = true;
 
         var progress = 0;
         var failCount = 0;
@@ -1023,14 +1036,25 @@ document.getElementById('importform').onsubmit = function(event) {
                 message = 'Imported all ' + cookies.length + ' cookies.';
             }
             document.getElementById('import-log').value += message + '\n';
+            document.getElementById('import-cancel').disabled = false;
+            importFinished();
         }
     }
 
     function importError(error) {
         importOutput('ERROR: ' + error);
+        importFinished();
     }
     function importOutput(msg) {
         document.querySelector('#importform output').value = msg;
+    }
+
+    function importStarted() {
+        // Disallow concurrent imports.
+        document.getElementById('import-import').disabled = true;
+    }
+    function importFinished() {
+        document.getElementById('import-import').disabled = false;
     }
 };
 
