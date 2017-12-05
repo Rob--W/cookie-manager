@@ -405,10 +405,25 @@ var WhitelistManager = {
     // Initialize the storage. The promise resolves with whether _cached was changed.
     initialize(force = false) {
         if (!WhitelistManager._initPromise || force && WhitelistManager._initialized) {
+            var shouldSkipDataLookup = WhitelistManager._storageLastChanged !== 0;
             WhitelistManager._initialized = false;
-            WhitelistManager._initPromise = new Promise(function(resolve) {
-                // TODO: Optimize by first looking up "lastChanged" to determine whether there is
-                // any updated data to look up.
+            WhitelistManager._initPromise = new Promise(function doLookup(resolve) {
+                // If we have already looked up "cookieWhitelist" before, avoid unnecessarily
+                // reading the data again by first looking up "lastChanged" to determine whether
+                // there is any updated data to look up.
+                if (shouldSkipDataLookup) {
+                    shouldSkipDataLookup = false;
+                    chrome.storage.local.get({lastChanged: 0}, function(items) {
+                        var lastChanged = items && items.lastChanged || 0;
+                        if (lastChanged) {
+                            doLookup(resolve);
+                        } else {
+                            resolve(false);
+                        }
+                    });
+                    return;
+                }
+
                 chrome.storage.local.get({
                     lastChanged: 0,
                     cookieWhitelist: '',
