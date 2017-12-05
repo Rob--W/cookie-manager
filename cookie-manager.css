@@ -74,6 +74,19 @@ body {
     color: red;
 }
 
+/* custom fieldset because flexbox is not supported in Chrome - https://crbug.com/375693 */
+.flexible-fieldset {
+    border: 1px solid;
+    padding: 1em;
+}
+.flexible-fieldset > legend {
+    align-self: baseline;
+    font-weight: bold;
+    margin-top: -1em; /* undo padding from flexible-fieldset */
+    transform: translateY(-50%); /* vertically center on the border */
+    padding: 0 1ch;
+    background: white;
+}
 .stretched-textarea-container {
     display: flex;
     flex-direction: column;
@@ -89,8 +102,7 @@ body {
 }
 .stretched-textarea-container > textarea {
     min-height: 6em;
-    height: 100%;
-    flex: 1;
+    flex-grow: 1;
 }
 
 #whitelist-unlock-prompt {
