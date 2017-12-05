@@ -794,6 +794,7 @@ Array.from(document.querySelectorAll('#editform label[for]')).forEach(function(r
 // Import / export functionality.
 document.getElementById('export-cancel').onclick = function() {
     document.getElementById('exportform').reset();
+    document.getElementById('export-text').hidden = true;
     document.body.classList.remove('exporting-cookies');
 };
 document.getElementById('import-cancel').onclick = function() {
@@ -825,6 +826,7 @@ document.getElementById('exportform').onsubmit = function(event) {
         document.body.appendChild(f);
     } else {
         document.getElementById('export-text').value = text;
+        document.getElementById('export-text').hidden = false;
     }
 };
 
