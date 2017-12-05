@@ -169,6 +169,7 @@ body.editing-cookie {
 #footer-controls > button.editbutton {
     display: none;
 }
+#footer-controls > button#whitelist-lock-again:not([hidden]),
 .exporting-cookies #footer-controls > button.exportbutton,
 .importing-cookies #footer-controls > button.importbutton,
 .editing-cookie #footer-controls > button.editbutton {
