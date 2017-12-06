@@ -167,7 +167,6 @@ if (typeof browser !== 'undefined') {
             // These are visible to cookies.getAll - https://bugzil.la/1388873
             cookiesSet(cookie, function(newCookie) {
                 if (!newCookie) {
-                    console.log(newCookie, cookie);
                     // Successfully modified.
                     callback(newCookie);
                     return;
