@@ -30,6 +30,10 @@ body {
 #searchform select:hover {
     background-color: #EEE;
 }
+#search-button {
+    flex: 2;
+    font-weight: bold;
+}
 
 
 #exportform,
