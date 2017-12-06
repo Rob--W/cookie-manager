@@ -350,5 +350,9 @@ td:nth-child(even) {
         max-height: 5.4em;
         padding-left: 1px;
     }
+    /* The "New Cookie" option is also available from the menu. */
+    #show-new-form {
+        display: none;
+    }
 }
 

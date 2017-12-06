@@ -314,6 +314,10 @@ document.getElementById('other-action').onchange = function() {
 };
 
 var OtherActionsController = {
+    new_cookie() {
+        document.getElementById('show-new-form').click();
+    },
+
     bulk_export() {
         var selectionCount = getAllCookieRows().filter(isRowSelected).length;
         if (!selectionCount) {
