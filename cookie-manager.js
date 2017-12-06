@@ -17,6 +17,10 @@ document.getElementById('searchform').onsubmit = function(e) {
     doSearch();
 };
 
+document.body.addEventListener('selectstart', function(event) {
+    document.body.addEventListener('mouseup', onMouseUpAfterTextSelection);
+});
+
 chrome.extension.isAllowedIncognitoAccess(function(isAllowedAccess) {
     if (!isAllowedAccess) {
         var introContainer = document.querySelector('.no-results td');
@@ -1705,6 +1709,127 @@ function bindKeyboardToRow(row) {
             });
         }
     }
+}
+
+var _delayedMultiSelectShower;
+var _delayedMultiSelectHider;
+function onMouseUpAfterTextSelection(event) {
+    // The following line should probably be kept in sync with hideMultiSelectionToolOnMousedown.
+    if (event.button !== 0 || event.target.closest('#multi-selection-tool')) return;
+
+    clearTimeout(_delayedMultiSelectShower);
+    // Wait a short timeout to allow the selection change to propagate, if needed.
+    // Also to not immediately disturb the user when they release the mouse.
+    _delayedMultiSelectShower = setTimeout(onClickAfterTextSelection, 200, event);
+}
+function onClickAfterTextSelection(event) {
+    if (isEmptyTextSelection()) {
+        hideMultiSelectionTool();
+        return;
+    }
+    var tbody = document.getElementById('result').tBodies[0];
+    if (!tbody || !tbody.contains(event.target)) {
+        // Did not click inside the result table.
+        hideMultiSelectionTool();
+        return;
+    }
+    function getRow(node) {
+        if (node.nodeType === 3) node = node.parentNode;
+        if (node.nodeType === 1) {
+            node = node.closest('tr');
+            if (node && node.parentNode === tbody) return node;
+        }
+        return null;
+    }
+    var sel = window.getSelection();
+    var rows = new Set();
+    for (var i = 0; i < sel.rangeCount; ++i) {
+        var range = sel.getRangeAt(i);
+        var row = getRow(range.commonAncestorContainer);
+        if (row) {
+            // Range spans one row. E.g. Firefox puts each row in a separate row.
+            rows.add(row);
+            continue;
+        }
+        var rowStart = getRow(range.startContainer);
+        var rowEnd = getRow(range.endContainer);
+        if (!rowStart || !rowEnd || rowStart === rowEnd) {
+            // At most one row.
+            row = rowStart || rowEnd;
+            if (row) rows.add(row);
+            continue;
+        }
+        // Multiple rows.
+        if (rowStart.rowIndex > rowEnd.rowIndex) {
+            [rowStart, rowEnd] = [rowEnd, rowStart];
+        }
+        for (row = rowStart; row !== rowEnd; row = row.nextElementSibling) {
+            rows.add(row);
+        }
+        rows.add(rowEnd);
+    }
+    if (rows.size < 2) {
+        hideMultiSelectionTool();
+        return;
+    }
+
+    // We have at least two rows. Ask whether the user wants to highlight both rows.
+
+    setButtonCount('multi-selection-select', rows.size);
+    document.getElementById('multi-selection-select').onclick = function() {
+        rows.forEach(function(row) {
+            row.classList.add('highlighted');
+        });
+        updateButtonView();
+    };
+    document.getElementById('multi-selection-invert').onclick = function() {
+        rows.forEach(function(row) {
+            row.classList.toggle('highlighted');
+        });
+        updateButtonView();
+    };
+
+    cancelHideMultiSelectionTool();
+    var multiSelectionTool = document.getElementById('multi-selection-tool');
+
+    // TODO: Try to not fall off the screen.
+    // Add +5 to ensure that the user can move the mouse without immediately triggering mouseleave.
+    var x = event.clientX + 5;
+    var y = event.clientY + 5;
+    multiSelectionTool.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+    multiSelectionTool.hidden = false;
+
+    // The tool can only be shown with mouse interaction, so it makes sense to only allow the
+    // tool to be hidden via other mouse events (opposed to keyboard events).
+    multiSelectionTool.addEventListener('mouseenter', cancelHideMultiSelectionTool);
+    multiSelectionTool.addEventListener('mouseleave', hideMultiSelectionToolAfterDelay);
+    document.body.addEventListener('mousedown', hideMultiSelectionToolOnMousedown);
+}
+function hideMultiSelectionTool() {
+    document.getElementById('multi-selection-select').onclick = null;
+    document.getElementById('multi-selection-invert').onclick = null;
+    var multiSelectionTool = document.getElementById('multi-selection-tool');
+    multiSelectionTool.hidden = true;
+    multiSelectionTool.removeEventListener('mouseenter', cancelHideMultiSelectionTool);
+    multiSelectionTool.removeEventListener('mouseleave', hideMultiSelectionToolAfterDelay);
+    document.body.removeEventListener('mousedown', hideMultiSelectionToolOnMousedown);
+
+    if (isEmptyTextSelection()) {
+        document.body.removeEventListener('mouseup', onMouseUpAfterTextSelection);
+    }
+}
+function cancelHideMultiSelectionTool() {
+    clearTimeout(_delayedMultiSelectHider);
+}
+function hideMultiSelectionToolAfterDelay() {
+    clearTimeout(_delayedMultiSelectHider);
+    // Almost a second before it disappears. Should be more than sufficient.
+    _delayedMultiSelectHider = setTimeout(hideMultiSelectionTool, 750);
+}
+function hideMultiSelectionToolOnMousedown(event) {
+    // The following line should probably be kept in sync with onMouseUpAfterTextSelection.
+    if (event.button !== 0 || event.target.closest('#multi-selection-tool')) return;
+    hideMultiSelectionTool();
 }
 
 function isEmptyTextSelection() {

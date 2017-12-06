@@ -252,6 +252,23 @@ td:nth-child(even) {
     visibility: hidden;
 }
 
+#multi-selection-tool:not([hidden]) {
+    position: fixed;
+    top: 0;
+    left: 0;
+    transform-origin: 0;
+    border: 1px solid black;
+    padding: 4px;
+    display: inline-block;
+    background: white;
+    text-align: center;
+}
+#multi-selection-tool > button {
+    display: block;
+    width: 100%;
+}
+
+
 #other-action {
     font-size: 1rem;
 }
