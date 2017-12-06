@@ -213,7 +213,7 @@ function getVisibleCookieRows(forceRecalc = false) {
 function getVisibleCookieRowsWithRecalc_() {
     var tableRect = document.getElementById('result').tBodies[0].getBoundingClientRect();
     var bottomOffset = document.getElementById('footer-controls').getBoundingClientRect().top;
-    var minimumVisibleRowHeight = document.querySelector('#result thead > tr').offsetHeight;
+    var minimumVisibleRowHeight = document.querySelector('#result thead > tr').offsetHeight || 1;
 
     var visibleCenter = tableRect.left + tableRect.width / 2;
     var visibleTop = Math.max(0, tableRect.top) + minimumVisibleRowHeight;
