@@ -26,6 +26,15 @@ If you have suggestions or questions, open an issue at https://github.com/Rob--W
 - Import / export cookies
 
 
+## Searching for cookies
+The Cookie Manager has a search form that allows you to filter on every possible
+cookie field or flag. Only non-empty filters are used in the query.
+Wildcards (`*`) can be used in each filter to match any text.
+
+The list of results is **not** automatically updated. The "Search" button needs
+to be clicked again to refresh the list of cookies.
+
+
 ## Keyboard shortcuts
 
 Currently the UI is optimized for use on mobile, and support for keyboard shortcuts is limited to
