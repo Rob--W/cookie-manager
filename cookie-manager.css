@@ -253,6 +253,7 @@ td:nth-child(even) {
 }
 
 #multi-selection-tool:not([hidden]) {
+    z-index: 1; /* to be laid over the footer with the controls and buttons */
     position: fixed;
     top: 0;
     left: 0;
