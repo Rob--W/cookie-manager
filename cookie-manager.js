@@ -1401,10 +1401,10 @@ function patternToRegExp(pattern, isDomainPattern) {
         // Filtering by example.com and .example.com has the same effect.
         // So we too permit an optional dot in the front.
         // The following extra matches are added:
-        // example* -> .example.com*
+        // example.com* -> .example.com*
         // *example.com -> *.example.com
         // .example.com -> *.example.com
-        pattern = pattern.replace(/^((?:\.\*)*)\\\.?/, '$1\\.?');
+        pattern = pattern.replace(/^(((?:\.\*)*)\\\.?)?/, '$1\\.?');
     }
     pattern = '^' + pattern + '$';
     return new RegExp(pattern, 'i');
