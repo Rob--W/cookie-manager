@@ -8,11 +8,12 @@
 </head>
 <body>
 <form id="searchform">
-    <input type="text" id=".url" placeholder="url" title="Restricts the retrieved cookies to those that would match the given URL.">
+    <input type="text" id=".url" placeholder="url or domain (* = wildcard)" title="Filters the cookies by website. Supported formats:
+- Full URL ( http://example.com/path )
+- Domain ( example.com, *.example.com, *example* )
+">
     <input type="text" id=".name" placeholder="name" title="Filters the cookies by name.">
     <input type="text" id=".value" placeholder="value" title="Filters the cookies by value.">
-    <input type="text" id=".domain" placeholder="domain" title="Restricts the retrieved cookies to those whose domains match or are subdomains of this one.">
-    <input type="text" id=".path" placeholder="path" title="Restricts the retrieved cookies to those whose path exactly matches this string.">
     <div class="flex-grid">
         <select id=".secure" title="Filters the cookies by their Secure property.">
             <option value="" selected>Secure = any</option>

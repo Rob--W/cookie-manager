@@ -1204,11 +1204,19 @@ function doSearch() {
     // Filters for cookie:
     var filters = {};
     var query = {};
+    function setQueryOrFilter(param, value) {
+        if (value.includes('*')) {
+            if (value !== '*' && (param !== 'path' || value !== '/*')) {
+                // Optimization: Do not create the query and filter if the
+                // user wants to see all results.
+                filters[param] = patternToRegExp(value, param === 'domain');
+            }
+        } else if (value) {
+            query[param] = value;
+        }
+    }
     [
-        'url',
         'name',
-        'domain',
-        'path',
         'secure',
         'httpOnly',
         'session',
@@ -1224,16 +1232,19 @@ function doSearch() {
             } else if (value) {
                 query[param] = value;
             }
-        } else if (value.indexOf('*') >= 0) {
-            if (value !== '*') {
-                // Optimization: Do not create the query and filter if the
-                // user wants to see all results.
-                filters[param] = patternToRegExp(value, param === 'domain');
-            }
-        } else if (value) {
-            query[param] = value;
+        } else {
+            setQueryOrFilter(param, value);
         }
     });
+
+    var urlInputValue = document.getElementById('.url').value;
+    if (urlInputValue) {
+        if (urlInputValue.includes('/')) {
+            setQueryOrFilter('url', urlInputValue);
+        } else {
+            setQueryOrFilter('domain', urlInputValue);
+        }
+    }
 
     if (typeof query.url === 'string') {
         query.url = urlWithoutPort(query.url);
