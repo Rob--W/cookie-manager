@@ -1372,6 +1372,13 @@ function doSearch() {
             cell.colSpan = 7;
             if (errors.length === 0) {
                 cell.textContent = 'No cookies found.';
+                if (typeof query.domain === 'string' &&
+                    query.domain !== 'localhost' &&
+                    !query.domain.includes('.') &&
+                    !query.domain.includes('*')) {
+                    cell.textContent += '\nPlease enter a full domain, or use wildcards (*) to match parts of domains.';
+                    cell.textContent += '\nFor example: *' + query.domain + '*';
+                }
             } else {
                 cell.style.whiteSpace = 'pre-wrap';
                 cell.textContent = errors.join('\n');
