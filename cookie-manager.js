@@ -101,7 +101,8 @@ function modifyCookieRows(shouldRestore) {
     var rows = getAllCookieRows().filter(function(row) {
         return isRowSelected(row) && row.cmApi.isDeleted() === shouldRestore;
     });
-    if (!window.confirm('Do you really want to ' + action + ' ' + rows.length + ' selected cookies?')) {
+    var messageId = shouldRestore ? 'BULK_RESTORE' : 'BULK_REMOVE';
+    if (!confirmOnce(messageId, 'Do you really want to ' + action + ' ' + rows.length + ' selected cookies?')) {
         return;
     }
     // Promises that always resolve. Upon success, a void value. Otherwise an error string.
@@ -679,7 +680,7 @@ document.getElementById('editform').onsubmit = function(event) {
             restoreButton.textContent = 'Restore';
             restoreButton.onclick = function(event) {
                 event.stopPropagation();
-                if (!window.confirm('Do you want to undo the edit and restore the previous cookie?')) {
+                if (!confirmOnce('UNDO_EDIT', 'Do you want to undo the edit and restore the previous cookie?')) {
                     return;
                 }
                 restoreButton.disabled = true;
@@ -1409,6 +1410,33 @@ function invalidateRowReferences() {
     _visibleCookieRows = null;
 }
 
+var _confirmCounts;
+function confirmOnce(messageId, msg) {
+    if (!_confirmCounts) {
+        try {
+            // If the tab has been reload but not closed, re-use the previously used confirmation settings.
+            _confirmCounts = JSON.parse(sessionStorage.confirmationCounts || '{}');
+        } catch (e) {
+            _confirmCounts = {};
+        }
+    }
+    var count = _confirmCounts[messageId] || 0;
+    if (count >= 2) {
+        // Auto-confirm after two repetitions.
+        return true;
+    }
+    if (count === 1) {
+        msg += '\n\nThis will not be asked again if you confirm (twice in a row, until the next startup of the Cookie Manager).';
+    }
+    var result = window.confirm(msg);
+    _confirmCounts[messageId] = result ? count + 1 : 0;
+    try {
+        sessionStorage.confirmationCounts = JSON.stringify(_confirmCounts);
+    } catch (e) {
+    }
+    return result;
+}
+
 // Utility functions.
 
 function patternToRegExp(pattern, isDomainPattern) {
@@ -1721,7 +1749,7 @@ function bindKeyboardToRow(row) {
         var msg = 'Do you really want to delete the currently focused cookie?';
         msg += '\nTo delete all selected cookies (instead of the currently focused cookie),' +
             ' use the "Remove selected" button at the bottom.';
-        if (window.confirm(msg)) {
+        if (confirmOnce('DELETE_THIS_ROW', msg)) {
             row.cmApi.deleteCookie().then(function(error) {
                 if (error) {
                     alert('Failed to delete cookie:\n' + error);
