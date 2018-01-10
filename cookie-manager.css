@@ -202,7 +202,8 @@ table.no-results {
     white-space: pre-wrap;
     min-width: auto;
 }
-table.no-results thead {
+table.no-results thead,
+table.no-results tfoot {
     display: none;
 }
 
@@ -254,6 +255,11 @@ td:nth-child(even) {
 }
 .cookie-removed .action-buttons button {
     visibility: hidden;
+}
+
+#show-more-results-button {
+    width: 100%;
+    height: 3em;
 }
 
 #multi-selection-tool:not([hidden]) {

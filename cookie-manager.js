@@ -1367,6 +1367,7 @@ function doSearch() {
 
         var cookiesOut = document.createElement('tbody');
         var hasNoCookies = cookies.length === 0;
+        var remainingCookies;
 
         if (hasNoCookies) {
             var cell = cookiesOut.insertRow().insertCell();
@@ -1384,7 +1385,9 @@ function doSearch() {
                 cell.style.whiteSpace = 'pre-wrap';
                 cell.textContent = errors.join('\n');
             }
+            remainingCookies = [];
         } else {
+            remainingCookies = cookies.splice(getMaxCookiesPerView());
             cookies.forEach(function(cookie) {
                 renderCookie(cookiesOut, cookie);
             });
@@ -1396,7 +1399,60 @@ function doSearch() {
         result.classList.toggle('no-results', hasNoCookies);
         result.replaceChild(cookiesOut, result.tBodies[0]);
 
+        renderRemainingCookiesFooter(remainingCookies);
         updateButtonView();
+    }
+
+    function getMaxCookiesPerView() {
+        var maxCookiesPerView = 20;
+        // Calculate the least number of rows to fill the screen, plus a bit more.
+        // "plus a bit more" because "minimumRowHeight" is lower than the actual minimal height of
+        // a row because the row also has padding, and rows themselves can also span multiple lines.
+        // Thus the result is a list that can be more than a few times larger than what fits in a
+        // screen.
+        var minimumRowHeight = parseFloat(window.getComputedStyle(document.body).fontSize) || 16;
+        var minCookiesPerScreen = Math.ceil(screen.availHeight / minimumRowHeight);
+        if (maxCookiesPerView < minCookiesPerScreen) {
+            maxCookiesPerView = minCookiesPerScreen;
+        }
+        if (maxCookiesPerView > 1000) {
+            // This is an excessive count. Let's bound the number for sanity.
+            maxCookiesPerView = 1000;
+        }
+        return maxCookiesPerView;
+    }
+
+    function renderRemainingCookiesFooter(remainingCookies) {
+        var result = document.getElementById('result');
+        if (remainingCookies.length === 1) {
+            // If there is only one row left, just render it.
+            renderCookie(result.tBodies[0], remainingCookies.shift());
+        }
+        if (remainingCookies.length === 0) {
+            result.tFoot.hidden = true;
+            document.getElementById('show-more-results-button').onclick = null;
+            return;
+        }
+        var maxCookiesPerView = getMaxCookiesPerView();
+        result.tFoot.hidden = false;
+        document.getElementById('show-more-results-button').textContent =
+            'Show ' + maxCookiesPerView + ' more rows (out of ' + remainingCookies.length + ')';
+        document.getElementById('show-more-results-button').onclick = function() {
+            var newRemainingCookies = remainingCookies.splice(maxCookiesPerView);
+            var fragment = document.createDocumentFragment();
+            remainingCookies.forEach(function(cookie) {
+                renderCookie({
+                    insertRow: function() {
+                        var tr = document.createElement('tr');
+                        fragment.appendChild(tr);
+                        return tr;
+                    },
+                }, cookie);
+            });
+            result.tBodies[0].appendChild(fragment);
+            renderRemainingCookiesFooter(newRemainingCookies);
+            updateButtonView();
+        };
     }
 }
 
@@ -1729,6 +1785,11 @@ function bindKeyboardToRow(row) {
         case 38: // Arrow up
         case 40: // Arrow down
             var next = event.keyCode === 40 ? row.nextElementSibling : row.previousElementSibling;
+            if (!next && event.keyCode === 40 &&
+                !document.getElementById('show-more-results-button').hidden) {
+                document.getElementById('show-more-results-button').click();
+                next = row.nextElementSibling;
+            }
             if (next) {
                 next.focus();
                 if (event.shiftKey) {

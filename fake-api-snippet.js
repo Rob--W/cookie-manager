@@ -8,7 +8,7 @@
 /* globals isPartOfDomain */ // from cookie-manager.js
 'use strict';
 
-var _FAKE_INITIAL_COOKIE_COUNT = 100;
+var _FAKE_INITIAL_COOKIE_COUNT = 1234;
 
 var _fakeCookies = (() => {
     var cookies = [];
