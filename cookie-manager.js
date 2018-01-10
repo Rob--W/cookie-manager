@@ -161,7 +161,6 @@ function updateButtonView() {
         return WhitelistManager.isWhitelisted(row.cmApi.rawCookie);
     }).length;
 
-    // updateVisibleButtonView may require a recalc, so call this before updating the rest.
     updateVisibleButtonView();
 
     setButtonCount('select-all', allCookieRows.length);
@@ -171,14 +170,31 @@ function updateButtonView() {
     setButtonCount('whitelist-selected', selectedCookieRows.length - whitelistedSelectionCount);
     setButtonCount('unwhitelist-selected', whitelistedSelectionCount);
 }
+var _updateVisibleButtonViewRAFHandle;
 function updateVisibleButtonView() {
-    _throttledVisIsThrottled = false;  // can be set to true in updateVisibleButtonViewThrottled.
+    if (_visibleCookieRows) {
+        // List of visible cookies is already available without recalc. Use the data immediately.
+        if (_updateVisibleButtonViewRAFHandle) {
+            window.cancelAnimationFrame(_updateVisibleButtonViewRAFHandle);
+        }
+        updateVisibleButtonViewInternal(_visibleCookieRows);
+    } else if (!_updateVisibleButtonViewRAFHandle) {
+        // The list of visible cookies is not available yet. Wait for the next frame.
+        _updateVisibleButtonViewRAFHandle = window.requestAnimationFrame(function() {
+            updateVisibleButtonViewInternal(getVisibleCookieRows());
+        });
+    }
 
-    var visibleCookieRows = getVisibleCookieRows();
-    var selectedVisibleCookieRows = visibleCookieRows.filter(isRowSelected);
+    function updateVisibleButtonViewInternal(visibleCookieRows) {
+        _updateVisibleButtonViewRAFHandle = 0;
 
-    setButtonCount('select-visible', visibleCookieRows.length);
-    setButtonCount('unselect-visible', selectedVisibleCookieRows.length);
+        _throttledVisIsThrottled = false;  // can be set to true in updateVisibleButtonViewThrottled.
+
+        var selectedVisibleCookieRows = visibleCookieRows.filter(isRowSelected);
+
+        setButtonCount('select-visible', visibleCookieRows.length);
+        setButtonCount('unselect-visible', selectedVisibleCookieRows.length);
+    }
 }
 var _throttledVisTimer;
 var _throttledVisIsThrottled = false;
