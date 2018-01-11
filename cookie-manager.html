@@ -8,24 +8,24 @@
 </head>
 <body>
 <form id="searchform">
-    <input type="text" id=".url" placeholder="url or domain (* = wildcard)" title="Filters the cookies by website. Supported formats:
+    <input type="text" id=".url" placeholder="filter by url or domain (* = wildcard)" title="Filters the cookies by website. Supported formats:
 - Full URL ( http://example.com/path )
 - Domain ( example.com, *.example.com, *example* )
 ">
-    <input type="text" id=".name" placeholder="name" title="Filters the cookies by name.">
-    <input type="text" id=".value" placeholder="value" title="Filters the cookies by value.">
+    <input type="text" id=".name" placeholder="filter by name" title="Filters the cookies by name.">
+    <input type="text" id=".value" placeholder="filter by value" title="Filters the cookies by value.">
     <div class="flex-grid">
-        <select id=".secure" title="Filters the cookies by their Secure property.">
+        <select id=".secure" title="Filters secure cookies (which are only sent over encrypted connections).">
             <option value="" selected>Secure = any</option>
             <option value="true">Secure = yes</option>
             <option value="false">Secure = no</option>
         </select>
-        <select id=".httpOnly" title="Filters the cookies by their httpOnly property.">
+        <select id=".httpOnly" title="Filters httpOnly cookies (which are only readable by web servers, not web pages).">
             <option value="" selected>httpOnly = any</option>
             <option value="true">httpOnly = yes</option>
             <option value="false">httpOnly = no</option>
         </select>
-        <select id=".session">
+        <select id=".session" title="Filters session cookies">
             <option value="" selected>Session = any</option>
             <option value="true">Session cookies</option>
             <option value="false">Non-session cookies</option>
@@ -41,7 +41,7 @@
             <option value="true">Whitelist = yes</option>
             <option value="false">Whitelist = no</option>
         </select>
-        <input type="submit" id="search-button" value="Search">
+        <input type="submit" id="search-button" value="Search cookies">
     </div>
 </form>
 
