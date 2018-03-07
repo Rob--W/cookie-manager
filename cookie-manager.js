@@ -1382,6 +1382,7 @@ function doSearch() {
         cookies = processAllCookies(cookies);
 
         var cookiesOut = document.createElement('tbody');
+        var cookiesCount = cookies.length;
         var hasNoCookies = cookies.length === 0;
         var remainingCookies;
 
@@ -1415,7 +1416,7 @@ function doSearch() {
         result.classList.toggle('no-results', hasNoCookies);
         result.replaceChild(cookiesOut, result.tBodies[0]);
 
-        renderRemainingCookiesFooter(remainingCookies);
+        renderRemainingCookiesFooter(remainingCookies, cookiesCount);
         updateButtonView();
     }
 
@@ -1438,7 +1439,7 @@ function doSearch() {
         return maxCookiesPerView;
     }
 
-    function renderRemainingCookiesFooter(remainingCookies) {
+    function renderRemainingCookiesFooter(remainingCookies, cookiesCount) {
         var result = document.getElementById('result');
         if (remainingCookies.length === 1) {
             // If there is only one row left, just render it.
@@ -1447,8 +1448,10 @@ function doSearch() {
         if (remainingCookies.length === 0) {
             result.tFoot.hidden = true;
             document.getElementById('show-more-results-button').onclick = null;
+            document.getElementById('all-count-if-hidden').textContent = '';
             return;
         }
+        document.getElementById('all-count-if-hidden').textContent = ' / ' + cookiesCount;
         var maxCookiesPerView = getMaxCookiesPerView();
         result.tFoot.hidden = false;
         document.getElementById('show-more-results-button').textContent =
@@ -1466,7 +1469,7 @@ function doSearch() {
                 }, cookie);
             });
             result.tBodies[0].appendChild(fragment);
-            renderRemainingCookiesFooter(newRemainingCookies);
+            renderRemainingCookiesFooter(newRemainingCookies, cookiesCount);
             updateButtonView();
         };
     }

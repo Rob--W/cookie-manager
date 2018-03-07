@@ -257,6 +257,9 @@ td:nth-child(even) {
     visibility: hidden;
 }
 
+#all-count-if-hidden {
+    color: red;
+}
 #show-more-results-button {
     width: 100%;
     height: 3em;
