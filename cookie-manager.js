@@ -60,6 +60,12 @@ document.getElementById('.session').onchange = function() {
     document.getElementById('.expiry.max').disabled = this.value == 'true';
 };
 document.getElementById('select-all').onclick = function() {
+    if (!document.getElementById('show-more-results-button').hidden &&
+        getAllCookieRows().every(isRowSelected) &&
+        confirmOnce('SELECT_ALL_SHOW_ALL', 'All shown results have already been selected, but some results are hidden.\n' +
+            'Do you want to show all results before selecting them?')) {
+        document.getElementById('show-more-results-button').onclick({ ctrlKey: true, shiftKey: true, });
+    }
     getAllCookieRows().forEach(function(row) {
         row.classList.add('highlighted');
     });
@@ -1456,8 +1462,9 @@ function doSearch() {
         result.tFoot.hidden = false;
         document.getElementById('show-more-results-button').textContent =
             'Show ' + maxCookiesPerView + ' more rows (out of ' + remainingCookies.length + ')';
-        document.getElementById('show-more-results-button').onclick = function() {
-            var newRemainingCookies = remainingCookies.splice(maxCookiesPerView);
+        document.getElementById('show-more-results-button').onclick = function(event) {
+            // ctrl-shift-click = show all.
+            var newRemainingCookies = event.shiftKey && event.ctrlKey ? [] : remainingCookies.splice(maxCookiesPerView);
             var fragment = document.createDocumentFragment();
             remainingCookies.forEach(function(cookie) {
                 renderCookie({
