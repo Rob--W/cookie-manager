@@ -33,7 +33,8 @@
                 '<select class="datetime-local-month" required></select> - ' +
                 '<input class="datetime-local-year" type="number" min="0" max="9999" step="1" title="year" placeholder="YYYY" required> , ' +
                 '<input class="datetime-local-hour" type="number" min="0" max="23" step="1" title="hours" placeholder="HH"> : ' +
-                '<input class="datetime-local-minute" type="number" max="59" step="1" title="minutes" placeholder="MM">' +
+                '<input class="datetime-local-minute" type="number" max="59" step="1" title="minutes" placeholder="MM"> : ' +
+                '<input class="datetime-local-second" type="number" max="59" step="1" title="seconds" placeholder="SS">' +
             '</div>' + 
             '<div class="datetime-local-buttonset">' +
                 '<input type="button" class="datetime-local-cancel" value="Cancel"> ' +
@@ -46,6 +47,7 @@
         var yearInput = d.querySelector('.datetime-local-year');
         var hourInput = d.querySelector('.datetime-local-hour');
         var minuteInput = d.querySelector('.datetime-local-minute');
+        var secondInput = d.querySelector('.datetime-local-second');
 
 
         d.querySelector('.datetime-local-cancel').onclick = function(event) {
@@ -95,6 +97,7 @@
                 yearInput.value = date.getFullYear();
                 hourInput.value = date.getHours();
                 minuteInput.value = date.getMinutes();
+                secondInput.value = date.getSeconds();
             }
         }
 
@@ -103,7 +106,8 @@
                 monthInput.value.padStart(2, '0') + '-' +
                 dayInput.value.padStart(2, '0') + 'T' +
                 hourInput.value.padStart(2, '0') + ':' +
-                minuteInput.value.padStart(2, '0');
+                minuteInput.value.padStart(2, '0') + ':' +
+                secondInput.value.padStart(2, '0');
         }
     }
 
@@ -141,8 +145,8 @@
             'font-size:1rem;' + 
             'line-height:2em;' +
             'text-align:center;');
-        addScopedStyle('.datetime-local-day, .datetime-local-hour, .datetime-local-minute',
-            'width:8ch;');
+        addScopedStyle('.datetime-local-day, .datetime-local-hour, .datetime-local-minute, .datetime-local-second',
+            'width:6ch;');
         addScopedStyle('.datetime-local-year',
             'width:8ch;');
         return styleSheetText;
