@@ -846,9 +846,9 @@ var CookieExporter = {
         // Optional if session is true:
         expirationDate: ['number', 'undefined'],
         storeId: ['string'],
-        // Chrome 51+
+        // Chrome 51+, Firefox 63+:
         sameSite: ['string', 'undefined'],
-        // Firefox 59+ ? - https://bugzil.la/1381197
+        // Firefox 59+:
         firstPartyDomain: ['string', 'undefined'],
     },
     get KEYS() {
