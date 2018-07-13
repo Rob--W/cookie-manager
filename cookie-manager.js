@@ -841,7 +841,8 @@ var CookieExporter = {
         path: ['string'],
         secure: ['boolean'],
         httpOnly: ['boolean'],
-        session: ['boolean'],
+        // Optional if expirationDate is set:
+        session: ['boolean', 'undefined'],
         // Optional if session is true:
         expirationDate: ['number', 'undefined'],
         storeId: ['string'],
@@ -920,7 +921,11 @@ var CookieExporter = {
                     ', got ' + typeofProp(key);
             }
         }
-        if (!cookie.session && typeofProp('expirationDate') !== 'number') {
+        if ('session' in cookie && cookie.session) {
+            if (typeofProp('expirationDate') !== 'undefined') {
+                return 'cookie.expirationDate cannot be set if cookie.session is true.';
+            }
+        } else if (typeofProp('expirationDate') !== 'number') {
             return 'cookie.expirationDate has an invalid type. Expected number , got ' +
                 typeofProp(key);
         }
