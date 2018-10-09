@@ -933,6 +933,39 @@ var CookieExporter = {
         // cookies.set will reject with an error.
     },
 };
+var HTTP_ONLY = '#HttpOnly_';
+var NetscapeCookieExporter = {
+    // Format: tab-separated fields:
+    // - domain: e.g. ".example.com" or "www.example.net"
+    // - flag (TRUE/FALSE): host-only cookie
+    // - path
+    // - secure (TRUE/FALSE): https
+    // - expiration: UNIX epoch
+    // - name
+    // - value
+    // Refs: https://unix.stackexchange.com/a/210282 and curl lib/cookie.c
+    // Lines starting with "#HttpOnly_" are httpOnly.
+    // Lines starting with '#' are ignored.
+    // This format ignores: session, storeId, sameSite, firstPartyDomain.
+    serialize(cookies) {
+        var output = '# Netscape HTTP Cookie File\n\n';
+        cookies.forEach((cookie) => {
+            if (cookie.httpOnly) {
+                output += HTTP_ONLY;
+            }
+            output += [
+                cookie.domain,
+                cookie.hostOnly ? 'TRUE' : 'FALSE',
+                cookie.path,
+                cookie.secure ? 'TRUE' : 'FALSE',
+                cookie.expirationDate || 0,
+                cookie.name,
+                cookie.value,
+            ].join('\t') + '\n';
+        });
+        return output;
+    },
+};
 document.getElementById('export-cancel').onclick = function() {
     document.getElementById('exportform').reset();
     document.getElementById('export-text').hidden = true;
@@ -949,12 +982,18 @@ document.getElementById('import-cancel').onclick = function() {
 };
 document.getElementById('exportform').onsubmit = function(event) {
     event.preventDefault();
+    var exportFormat = document.querySelector('#exportform input[name="export-format"]:checked').value;
     var exportType = document.querySelector('#exportform input[name="export-type"]:checked').value;
 
     var cookies = getAllCookieRows().filter(isRowSelected).map(function(row) {
         return row.cmApi.rawCookie;
     });
-    var text = CookieExporter.serialize(cookies);
+    var text;
+    if (exportFormat === 'netscape') {
+        text = NetscapeCookieExporter.serialize(cookies);
+    } else {
+        text = CookieExporter.serialize(cookies);
+    }
 
     if (exportType === 'file') {
         // Trigger the download from a child frame to work around a Firefox bug where an attempt to

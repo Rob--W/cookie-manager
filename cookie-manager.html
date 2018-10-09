@@ -168,12 +168,38 @@ By <a href="https://robwu.nl">Rob Wu</a>.
             Choose the export format and click on the "Export" button to
             export <span id="export-cookie-count">cookies</span>.
             <p>
-            When exported as a file, the exported data is downloaded as "cookies.json".<br>
+            Use the JSON format if you would like to restore cookies later while
+            preserving all metadata (storeId, sameSite, firstPartyDomain).
+            Use the Netscape format if you would like to use the cookies with
+            other tools such as curl. Either format can be imported later.
+            <p>
+            When exported as a file, the exported data is downloaded as
+            "cookies.json" or "cookies.txt".<br>
             When exported as text, the exported data is shown in a text field.
+        </div>
+
+        <div>
+            Output format:
         </div>
         <div>
             <label>
-                <input type="radio" name="export-type" value="file" required>
+                <input type="radio" name="export-format" value="json" required checked>
+                JSON (full backup that preserves all metadata)
+            </label>
+        </div>
+        <div>
+            <label>
+                <input type="radio" name="export-format" value="netscape" required>
+                Netscape (for use with tools like curl)
+            </label>
+        </div>
+
+        <div>
+            Export as:
+        </div>
+        <div>
+            <label>
+                <input type="radio" name="export-type" value="file" required checked>
                 Export as file
             </label>
         </div>
