@@ -1136,6 +1136,8 @@ document.getElementById('importform').onsubmit = function(event) {
     function importStarted() {
         // Disallow concurrent imports.
         document.getElementById('import-import').disabled = true;
+        // Clear previous error messages.
+        importOutput('');
     }
     function importFinished() {
         document.getElementById('import-import').disabled = false;
