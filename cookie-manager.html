@@ -217,11 +217,18 @@ By <a href="https://robwu.nl">Rob Wu</a>.
     <div class="stretched-textarea-container flexible-fieldset">
         <legend>Import cookies</legend>
         <div>
-            Select a file or paste the exported data (JSON) in the input field.
+            Select a file or paste the exported data (JSON) or Netscape HTTP
+            Cookie file in the input field.
             <p>
             When you click on the "Import" button, the cookies will be validated
             and overwrite existing cookies, without confirmation
             (except for whitelisted cookies).
+        </div>
+        <div>
+            Destination cookie jar:
+            <select id="import-store">
+                <option value="">As specified in the imported file</option>
+            </select>
         </div>
         <output></output>
         <progress hidden></progress>

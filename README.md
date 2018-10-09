@@ -24,6 +24,8 @@ If you have suggestions or questions, open an issue at https://github.com/Rob--W
 - Add cookies
 - Edit cookies
 - Import / export cookies
+  - JSON format for backup and restoration purposes.
+  - Netscape HTTP Cookie File format for use with other tools like curl and wget.
 
 
 ## Searching for cookies
