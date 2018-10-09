@@ -1058,10 +1058,12 @@ document.getElementById('exportform').onsubmit = function(event) {
     var cookies = getAllCookieRows().filter(isRowSelected).map(function(row) {
         return row.cmApi.rawCookie;
     });
-    var text;
+    var filename, text;
     if (exportFormat === 'netscape') {
+        filename = 'cookies.txt';
         text = NetscapeCookieExporter.serialize(cookies);
     } else {
+        filename = 'cookies.json';
         text = CookieExporter.serialize(cookies);
     }
 
@@ -1072,7 +1074,7 @@ document.getElementById('exportform').onsubmit = function(event) {
         f.style.position = 'fixed';
         f.style.left = f.style.top = '-999px';
         f.style.width = f.style.height = '99px';
-        f.srcdoc = '<a download="cookies.json" target="_blank">cookies.json</a>';
+        f.srcdoc = `<a download="${filename}" target="_blank">${filename}</a>`;
         f.onload = function() {
             var blob = new Blob([text], {type: 'application/json'});
             var a = f.contentDocument.querySelector('a');
