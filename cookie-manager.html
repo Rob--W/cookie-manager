@@ -30,8 +30,8 @@
             <option value="true">Session cookies</option>
             <option value="false">Non-session cookies</option>
         </select>
-        <input type="datetime-local" id=".expiry.min" placeholder="min expiry date" title="Minimal expiry date">
-        <input type="datetime-local" id=".expiry.max" placeholder="max expiry date" title="Maximal expiry date">
+        <input type="datetime-local" step="1" id=".expiry.min" placeholder="min expiry date" title="Minimal expiry date">
+        <input type="datetime-local" step="1" id=".expiry.max" placeholder="max expiry date" title="Maximal expiry date">
     </div>
     <div class="flex-grid">
         <select id=".storeId">
@@ -135,7 +135,7 @@ By <a href="https://robwu.nl">Rob Wu</a>.
         <label for="editform.expiry">
             <input type="radio" name="expires" id="editform.sessionFalse">
             <span>Expiry date:</span>
-            <input type="datetime-local" id="editform.expiry">
+            <input type="datetime-local" step="1" id="editform.expiry">
         </label>
         <label><input type="radio" name="expires" id="editform.sessionFalseExpired"><span>Marked for deletion (already expired)</span></label>
     </fieldset>
