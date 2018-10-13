@@ -152,6 +152,7 @@ window.chrome = {
             if ('expirationDate' in details && details.expirationDate < Date.now() / 1000) {
                 if (cookie) _fakeCookies.splice(i, 1);
                 cb(null);
+                return;
             }
             // Logic copied from cookie-manager.js
             var newCookie = Object.assign({}, details);
