@@ -1353,6 +1353,7 @@ function doSearch() {
         }
     }
 
+    var extraFirstPartyQuery;
     var compiledFilters = [];
 
     checkFirstPartyIsolationStatus().then(function() {
@@ -1406,12 +1407,17 @@ function doSearch() {
                 null;
 
             if (matchesFirstPartyDomain) {
-                // TODO: If firstPartyDomainQuery is set (=a string without
-                // wildcard), then it might be more efficient to run a second
-                // cookies.getAll query and merge the results, instead of
-                // collecting + filtering all results.
-                delete query.url;
-                delete query.domain;
+                if (query.url || query.domain) {
+                    if (firstPartyDomainQuery) {
+                        extraFirstPartyQuery = Object.assign({}, query);
+                        delete extraFirstPartyQuery.url;
+                        delete extraFirstPartyQuery.domain;
+                        extraFirstPartyQuery.firstPartyDomain = firstPartyDomainQuery;
+                    } else {
+                        delete query.url;
+                        delete query.domain;
+                    }
+                }
                 delete filters.url;
                 delete filters.domain;
                 compiledFilters.push(function matchesDomainOrUrlOrFirstPartyDomain(cookie) {
@@ -1448,7 +1454,7 @@ function doSearch() {
      */
     function useCookieStoreIds(query, cookieStoreIds) {
         var errors = [];
-        var cookiePromises = cookieStoreIds.map(function(storeId) {
+        function promiseCookies(query, storeId) {
             return new Promise(function(resolve) {
                 var queryWithId = Object.assign({}, query);
                 queryWithId.storeId = storeId;
@@ -1462,6 +1468,21 @@ function doSearch() {
                         errors.push('Failed to fetch cookies from cookie store ' + storeId + ': ' + error);
                     }
                     resolve(cookies || []);
+                });
+            });
+        }
+        var cookiePromises = cookieStoreIds.map(function(storeId) {
+            return promiseCookies(query, storeId).then(function(cookies) {
+                if (!extraFirstPartyQuery) {
+                    return cookies;
+                }
+                // We are performing a separate query for firstPartyDomain.
+                // Ensure that the collections are disjoint.
+                cookies = cookies.filter(function(cookie) {
+                    return cookie.firstPartyDomain !== extraFirstPartyQuery.firstPartyDomain;
+                });
+                return promiseCookies(extraFirstPartyQuery, storeId).then(function(extraCookies) {
+                    return cookies.concat(extraCookies);
                 });
             });
         });
