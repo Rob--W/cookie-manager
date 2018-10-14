@@ -5,7 +5,7 @@
 
 */
 /* jshint esversion:6, browser:true, devel:true */
-/* globals isPartOfDomain */ // from cookie-manager.js
+/* globals compileDomainFilter, compileUrlFilter */ // from cookie-manager.js
 'use strict';
 
 var _FAKE_INITIAL_COOKIE_COUNT = 1234;
@@ -61,22 +61,15 @@ var _fakeCookies = (() => {
 
 function _getFakeCookies(details) {
     var {url, name, domain, path, secure, session, storeId, firstPartyDomain} = details;
-    url = url && new URL(url);
+    var matchesUrl = url && compileUrlFilter(new URL(url));
+    var matchesDomain = domain && compileDomainFilter(domain);
     if (!_FAKE_FPD_SUPPORT && 'firstPartyDomain' in details) {
         throw new Error("firstPartyDomain is not supported because _FAKE_FPD_SUPPORT is false");
     }
     return _fakeCookies.filter(function(cookie) {
         // Logic copied from cookie-manager-firefox.js and extended.
-        if (url) {
-            if (cookie.hostOnly && url.hostname !== cookie.domain)
-                return false;
-            if (!isPartOfDomain(cookie.domain, url.hostname))
-                return false;
-            if (cookie.secure && url.protocol !== 'https:')
-                return false;
-            if (cookie.path !== '/' && !(url.pathname + '//').startsWith(cookie.path + '/'))
-                return false;
-        }
+        if (matchesUrl && !matchesUrl(cookie))
+            return false;
         if (name && cookie.name !== name)
             return false;
         if (path && cookie.path !== path)
@@ -87,10 +80,8 @@ function _getFakeCookies(details) {
             return false;
         if (storeId && cookie.storeId !== storeId)
             return false;
-        if (domain) {
-            if (!isPartOfDomain(cookie.domain, domain))
-                return false;
-        }
+        if (matchesDomain && !matchesDomain(cookie))
+            return false;
         if (firstPartyDomain != null && cookie.firstPartyDomain !== firstPartyDomain)
             return false;
         return true;

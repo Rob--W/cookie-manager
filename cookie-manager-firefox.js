@@ -1,6 +1,6 @@
 /* globals chrome */
 /* globals console */
-/* globals isPartOfDomain */
+/* globals compileDomainFilter, compileUrlFilter */
 /* globals cookieValidators */
 /* jshint browser: true */
 /* jshint esversion: 6 */
@@ -61,7 +61,8 @@ if (typeof browser !== 'undefined') {
         // Work around bugzil.la/1318948.
         // and work around bugzil.la/1381197.
         var {domain, url} = details;
-        url = url && new URL(url);
+        var matchesUrl = url && compileUrlFilter(new URL(url));
+        var matchesDomain = domain && compileDomainFilter(domain);
         var allDetails = Object.assign({}, details);
         delete allDetails.domain;
         delete allDetails.url;
@@ -70,23 +71,12 @@ if (typeof browser !== 'undefined') {
                 callback(cookies);
                 return;
             }
-            cookies = cookies.filter(function(cookie) {
-                if (url) {
-                    if (cookie.hostOnly && url.hostname !== cookie.domain)
-                        return false;
-                    if (!isPartOfDomain(cookie.domain, url.hostname))
-                        return false;
-                    if (cookie.secure && url.protocol !== 'https:')
-                        return false;
-                    if (cookie.path !== '/' && !(url.pathname + '//').startsWith(cookie.path + '/'))
-                        return false;
-                }
-                if (domain) {
-                    if (!isPartOfDomain(cookie.domain, domain))
-                        return false;
-                }
-                return true;
-            });
+            if (matchesUrl) {
+                cookies = cookies.filter(matchesUrl);
+            }
+            if (matchesDomain) {
+                cookies = cookies.filter(matchesDomain);
+            }
             callback(cookies);
         });
     };

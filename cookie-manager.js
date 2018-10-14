@@ -1688,6 +1688,30 @@ function isPartOfDomain(domain, mainDomain) {
     return domain !== '' && mainDomain.endsWith(domain);
 }
 
+function compileDomainFilter(domain) {
+    return function matchesDomain(cookie) {
+        return isPartOfDomain(cookie.domain, domain);
+    };
+}
+
+function compileUrlFilter(parsedUrl) {
+    var protocolIsNotSecure = parsedUrl.protocol !== 'https:';
+    var hostname = parsedUrl.hostname;
+    var path = parsedUrl.path + '//';
+
+    return function matchesUrl(cookie) {
+        if (cookie.hostOnly && hostname !== cookie.domain)
+            return false;
+        if (!isPartOfDomain(cookie.domain, hostname))
+            return false;
+        if (cookie.secure && protocolIsNotSecure)
+            return false;
+        if (cookie.path !== '/' && !path.startsWith(cookie.path + '/'))
+            return false;
+        return true;
+    };
+}
+
 var cookieValidators = {};
 cookieValidators._cookiePartCommon = function(prefix, v) {
     // Based on ParsedCookie::ParseTokenString and ParsedCookie::ParseValueString
