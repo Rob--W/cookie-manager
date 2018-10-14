@@ -1858,25 +1858,9 @@ function renderCookie(cookiesOut, cookie) {
         this.classList.toggle('highlighted');
         updateButtonView();
     };
-    row.cmApi = {
-        // The caller should not modify this value!
-        get rawCookie() { return cookie; },
-    };
-    row.cmApi.isDeleted = function() {
-        return row.classList.contains('cookie-removed');
-    };
-    row.cmApi.setDeleted = function(isDeleted) {
+    row.cmApi = createBaseCookieManagerAPI(cookie);
+    row.cmApi.renderDeleted = function(isDeleted) {
         row.classList.toggle('cookie-removed', isDeleted);
-    };
-    row.cmApi.deleteCookie = function() {
-        // Promise is resolved regardless of whether the call succeeded.
-        // The resolution value is an error string if an error occurs.
-        return new Promise(deleteCookie);
-    };
-    row.cmApi.restoreCookie = function() {
-        // Promise is resolved regardless of whether the call succeeded.
-        // The resolution value is an error string if an error occurs.
-        return new Promise(restoreCookie);
     };
     row.cmApi.renderListState = function() {
         if (cookieIsWhitelisted === WhitelistManager.isWhitelisted(cookie)) {
@@ -1951,6 +1935,39 @@ function renderCookie(cookiesOut, cookie) {
     };
 
     bindKeyboardToRow(row);
+}
+
+function createBaseCookieManagerAPI(cookie) {
+    var cmApi = {
+        // The caller should not modify this value!
+        get rawCookie() { return cookie; },
+        _isDeleted: false,
+    };
+    cmApi.isDeleted = function() {
+        return cmApi._isDeleted;
+    };
+    cmApi.setDeleted = function(isDeleted) {
+        cmApi._isDeleted = !!isDeleted;
+        cmApi.renderDeleted(cmApi._isDeleted);
+    };
+    cmApi.deleteCookie = function() {
+        // Promise is resolved regardless of whether the call succeeded.
+        // The resolution value is an error string if an error occurs.
+        return new Promise(deleteCookie);
+    };
+    cmApi.restoreCookie = function() {
+        // Promise is resolved regardless of whether the call succeeded.
+        // The resolution value is an error string if an error occurs.
+        return new Promise(restoreCookie);
+    };
+    cmApi.renderDeleted = function(isDeleted) {
+        // Should be overridden.
+    };
+    cmApi.renderListState = function() {
+        // No-op. When the row is not rendered, the state of the whitelist is not relevant.
+    };
+
+    return cmApi;
 
     function shouldBlockModification(resolve) {
         if (!WhitelistManager.isModificationAllowed(cookie)) {
@@ -1959,6 +1976,7 @@ function renderCookie(cookiesOut, cookie) {
             return true;
         }
     }
+
     function deleteCookie(resolve) {
         if (shouldBlockModification(resolve)) {
             return;
@@ -1970,7 +1988,7 @@ function renderCookie(cookiesOut, cookie) {
             if (chrome.runtime.lastError) {
                 resolve(chrome.runtime.lastError.message);
             } else {
-                row.cmApi.setDeleted(true);
+                cmApi.setDeleted(true);
                 resolve();
             }
         });
@@ -1984,7 +2002,7 @@ function renderCookie(cookiesOut, cookie) {
             if (chrome.runtime.lastError) {
                 resolve(chrome.runtime.lastError.message);
             } else {
-                row.cmApi.setDeleted(false);
+                cmApi.setDeleted(false);
                 resolve();
             }
         });
