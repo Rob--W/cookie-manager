@@ -1342,6 +1342,8 @@ function doSearch() {
     var httpOnly = query.httpOnly;
     delete query.httpOnly;
 
+    var compiledFilters = [];
+
     checkFirstPartyIsolationStatus().then(function() {
         if (!gFirstPartyDomainSupported) {
             return;
@@ -1365,6 +1367,10 @@ function doSearch() {
             query.firstPartyDomain = '';
         }
     }).then(function() {
+        Object.keys(filters).forEach(function(key) {
+            compiledFilters.push(compileRegExpFilter(key, filters[key]));
+        });
+
         if (query.storeId !== ANY_COOKIE_STORE_ID) {
             useCookieStoreIds(query, [query.storeId]);
             return;
@@ -1440,7 +1446,6 @@ function doSearch() {
             cookie._comparatorOperand = reverseString(cookie.domain) + cookie.path;
         });
 
-        var filterKeys = Object.keys(filters);
         cookies = cookies.filter(function(cookie) {
             if (httpOnly !== undefined && cookie.httpOnly !== httpOnly ||
                 !cookie.session && (
@@ -1449,8 +1454,8 @@ function doSearch() {
                 return false;
             }
             // Exclude cookies that do not match every filter
-            return filterKeys.every(function(key) {
-                return filters[key].test(cookie[key]);
+            return compiledFilters.every(function(filter) {
+                return filter(cookie);
             });
         });
 
@@ -1709,6 +1714,12 @@ function compileUrlFilter(parsedUrl) {
         if (cookie.path !== '/' && !path.startsWith(cookie.path + '/'))
             return false;
         return true;
+    };
+}
+
+function compileRegExpFilter(key, regExp) {
+    return function matchesKeyRegExp(cookie) {
+        return regExp.test(cookie[key]);
     };
 }
 
