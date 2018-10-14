@@ -205,6 +205,16 @@ if (typeof browser !== 'undefined') {
 }
 
 var cookiesAPIwithFirstPartyDomainSupport = false;
+try {
+    // firstPartyDomain is only supported in Firefox 59+ - bugzil.la/1381197
+    chrome.cookies.get({
+        name: 'dummyName',
+        firstPartyDomain: 'dummy',
+        url: 'about:blank',
+    });
+    cookiesAPIwithFirstPartyDomainSupport = true;
+} catch (e) {
+}
 
 // Return a callback that is passed to cookies.getAll(details, callback),
 // but without immutable cookies, such as safe browsing cookies while bug 1381197 is open.
@@ -284,7 +294,7 @@ function runWithoutPrivateCookieBugs(callbackNoBugs, callbackWithBugs) {
     // - cookies cannot be modified - bugzil.la/1354229
     // - cookies cannot be filtered by 'url' or 'domain' - bugzil.la/1318948
     //
-    // Firefox (all versions):
+    // Firefox before 59:
     // - cookies cannot be modified or queried by 'url' or 'domain' when FPI is enabled, i.e.
     //   privacy.firstparty.isolate is true - bugzil.la/1381197
     // - cookies in the safebrowsing cookie jar can never be modified.
@@ -296,6 +306,11 @@ function runWithoutPrivateCookieBugs(callbackNoBugs, callbackWithBugs) {
 }
 
 function checkPrivateCookieBugs(callbackNoBugs, callbackWithBugs) {
+    if (cookiesAPIwithFirstPartyDomainSupport) {
+        // Firefox 59+ - no work-arounds needed.
+        callbackNoBugs();
+        return;
+    }
     // Even if we detect that third-party cookies are disabled, we cannot fall back to first-party
     // cookies if we cannot open tabs through the tabs API, e.g. in Firefox for Android before 54.
     // Even if the tabs API is available, we don't want to try opening tabs if private windows are

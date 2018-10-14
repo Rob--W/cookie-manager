@@ -96,6 +96,10 @@ No special notes. I haven't published the extension to the Chrome Web Store.
 Install from: https://addons.mozilla.org/en-US/firefox/addon/a-cookie-manager
 
 ### All versions
+
+No known bugs or limitations.
+
+### Version 58 and earlier
 The cookies API in Firefox has several bugs that makes it unsuitable for
 modifying (private) cookies. In these cases, after a prompt, the extension will
 work around the bugs by initiating a request to the sites of the cookies, and
