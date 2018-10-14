@@ -1342,6 +1342,17 @@ function doSearch() {
     var httpOnly = query.httpOnly;
     delete query.httpOnly;
 
+    var parsedUrl;
+    if (query.url) {
+        // Non-wildcard URLs must be a valid URL.
+        try {
+            parsedUrl = new URL(urlInputValue);
+        } catch (e) {
+            renderAllCookies([], ['Invalid URL: ' + urlInputValue]);
+            return;
+        }
+    }
+
     var compiledFilters = [];
 
     checkFirstPartyIsolationStatus().then(function() {
@@ -1361,7 +1372,52 @@ function doSearch() {
         } else if (gFirstPartyIsolationEnabled) {
             // If first-party isolation is enabled, include cookies for any firstPartyDomain.
             query.firstPartyDomain = null;
-            // TODO: Also include cookies whose firstPartyDomain matches (but url/domain does not).
+
+            // Also include cookies whose firstPartyDomain matches (but url/domain does not).
+            var matchesDomainOrUrl;
+            var firstPartyDomainQuery;
+            var firstPartyDomainRegExp;
+            // query.domain, query.url, filters.domain and filters.url are mutually exclusive.
+            if (query.domain) {
+                // A plain and simple domain without wildcards.
+                firstPartyDomainQuery = query.domain;
+                matchesDomainOrUrl = compileDomainFilter(query.domain);
+            } else if (filters.domain) {
+                // Maybe a wildcard.
+                firstPartyDomainRegExp = filters.domain;
+                matchesDomainOrUrl = compileRegExpFilter('domain', filters.domain);
+            } else if (parsedUrl) {
+                // Simply a URL.
+                firstPartyDomainQuery = parsedUrl.hostname;
+                matchesDomainOrUrl = compileUrlFilter(parsedUrl);
+            } else if (filters.url) {
+                // Strip scheme, path comonent and port, if any.
+                firstPartyDomainQuery = urlInputValue.replace(/^[^/]*\/\//, '').split('/', 1)[0].replace(/:\d+$/, '');
+                if (firstPartyDomainQuery.includes('*')) { // Wildcard?
+                    firstPartyDomainRegExp = patternToRegExp(firstPartyDomainQuery, true);
+                    firstPartyDomainQuery = undefined;
+                }
+                matchesDomainOrUrl = compileRegExpFilter('url', filters.url);
+            }
+
+            let matchesFirstPartyDomain =
+                firstPartyDomainQuery ? function(cookie) { return cookie.firstPartyDomain === firstPartyDomainQuery; } :
+                firstPartyDomainRegExp ? compileRegExpFilter('firstPartyDomain', firstPartyDomainRegExp) :
+                null;
+
+            if (matchesFirstPartyDomain) {
+                // TODO: If firstPartyDomainQuery is set (=a string without
+                // wildcard), then it might be more efficient to run a second
+                // cookies.getAll query and merge the results, instead of
+                // collecting + filtering all results.
+                delete query.url;
+                delete query.domain;
+                delete filters.url;
+                delete filters.domain;
+                compiledFilters.push(function matchesDomainOrUrlOrFirstPartyDomain(cookie) {
+                    return matchesDomainOrUrl(cookie) || matchesFirstPartyDomain(cookie);
+                });
+            }
         } else {
             // Otherwise, default to non-first-party cookies only.
             query.firstPartyDomain = '';
