@@ -9,6 +9,24 @@
 'use strict';
 
 var _FAKE_INITIAL_COOKIE_COUNT = 1234;
+var _FAKE_FPD_SUPPORT =
+    location.href.includes('fpd=0') ? false :
+    location.href.includes('fpd=1') ? true :
+    true; // Default to true for now.
+
+if (_FAKE_FPD_SUPPORT && typeof browser === 'undefined') {
+    window.addEventListener("load", function() {
+        console.assert(typeof checkFirstPartyIsolationStatus === 'function',
+            'checkFirstPartyIsolationStatus should be defined by cookie-manager.js');
+        window.checkFirstPartyIsolationStatus = function() {
+            /* globals gFirstPartyIsolationEnabled:true */
+            /* globals gFirstPartyDomainSupported:true */
+            gFirstPartyIsolationEnabled = true;
+            gFirstPartyDomainSupported = true;
+            return Promise.resolve();
+        };
+    });
+}
 
 var _fakeCookies = (() => {
     var cookies = [];
@@ -24,6 +42,9 @@ var _fakeCookies = (() => {
             httpOnly: (i % 4) === 1,
             secure: (i % 6) === 0,
         };
+        if (_FAKE_FPD_SUPPORT) {
+            cookie.firstPartyDomain = (i % 10) ? 'num.' + (i % 5) + '.example.com' : '';
+        }
         if (i % 2) {
             cookie.session = true;
         } else {
@@ -39,8 +60,11 @@ var _fakeCookies = (() => {
 })();
 
 function _getFakeCookies(details) {
-    var {url, name, domain, path, secure, session, storeId} = details;
+    var {url, name, domain, path, secure, session, storeId, firstPartyDomain} = details;
     url = url && new URL(url);
+    if (!_FAKE_FPD_SUPPORT && 'firstPartyDomain' in details) {
+        throw new Error("firstPartyDomain is not supported because _FAKE_FPD_SUPPORT is false");
+    }
     return _fakeCookies.filter(function(cookie) {
         // Logic copied from cookie-manager-firefox.js and extended.
         if (url) {
@@ -67,6 +91,8 @@ function _getFakeCookies(details) {
             if (!isPartOfDomain(cookie.domain, domain))
                 return false;
         }
+        if (firstPartyDomain != null && cookie.firstPartyDomain !== firstPartyDomain)
+            return false;
         return true;
     });
 }

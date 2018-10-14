@@ -49,7 +49,7 @@
 <td><div class="cell-content name_"></div></td>
 <td><div class="cell-content valu_"></div></td>
 <td><div class="cell-content doma_"></div></td>
-<td><div class="cell-content path_"></div></td>
+<td><div class="cell-content fpdo_"></div></td>
 <td><div class="cell-content flag_"></div></td>
 <td><div class="cell-content expi_"></div></td>
 <td class="action-buttons"><button class="edit-single-cookie">Edit</button></td>
@@ -61,7 +61,7 @@
             <th class="col_name"><span>Name</span></th>
             <th class="col_valu"><span>Value</span></th>
             <th class="col_doma"><span>Domain</span></th>
-            <th class="col_path"><span>Path</span></th>
+            <th class="col_fpdo"><span title="First-Party domain for First-Party Isolation">First-Party Domain</span></th>
             <th class="col_flag"><span>Flags</span></th>
             <th class="col_expi"><span>Expiry date</span></th>
             <th class="col_butt"><!-- Action buttons --></th>
@@ -159,6 +159,11 @@ By <a href="https://robwu.nl">Rob Wu</a>.
         <legend>Cookie jar</legend>
         <select id="editform.storeId" required></select>
     </fieldset>
+    <fieldset id="editform.firstPartyDomain.container">
+        <legend>First-Party domain for First-Party Isolation</legend>
+        <input type="text" id="editform.firstPartyDomain">
+    </fieldset>
+    <br> <!-- Work-around for bugzil.la/1498552 - force a gap of 1em. -->
 </form>
 
 <form id="exportform">

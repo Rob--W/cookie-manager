@@ -221,7 +221,7 @@ tbody tr:hover {
 .name_,
 .valu_,
 .doma_,
-.path_ {
+.fpdo_ {
     word-break: break-all;
 }
 th:nth-child(even),
@@ -320,7 +320,7 @@ td:nth-child(even) {
     .col_name { width: 20ch; } /* cookie names are typically not that long */
     .col_valu { width: auto; } /* take the rest of the space - min width is enforced in table's min-width */
     .col_doma { width: 20ch; } /* domains are significant, try to fit them all */
-    .col_path { width: 15ch; } /* often just a slash. Not really important. */
+    .col_fpdo { width: 20ch; } /* first-party domain, if enabled (may be non-existent) */
     .col_flag { width: 11ch; } /* big enough to fit httpOnly, private, secure and containerTab */
     .col_expi { width: 11ch; } /* big enough to fit a date and split the time to the next line */
     .col_butt { width:  8ch; } /* big enough to fit a edit/restore button. */
@@ -339,7 +339,7 @@ td:nth-child(even) {
     .col_name { width: auto; }
     .col_valu { width: auto; }
     .col_doma { width: auto; }
-    .col_path { width: auto; }
+    .col_fpdo { width: auto; }
     .col_flag { width: 11ch; }
     .col_expi { width: 11ch; }
     .col_butt { width:  8ch; }
@@ -355,7 +355,7 @@ td:nth-child(even) {
     .col_name { width: auto; }
     .col_valu { width: auto; }
     .col_doma { width: auto; }
-    .col_path { width:  7ch; } /* The path is not really that important */
+    .col_fpdo { width: auto; }
     .col_flag { width:  7ch; } /* httpOnly, private and secure still fit without break */
     .col_expi { width: 11ch; }
     .col_butt { width:  8ch ;}
@@ -370,3 +370,10 @@ td:nth-child(even) {
     }
 }
 
+/* First-Party domain column is optional */
+.col_fpdo.columnDisabled {
+    width: 0;
+}
+.col_fpdo.columnDisabled span {
+    display: none;
+}

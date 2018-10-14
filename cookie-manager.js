@@ -11,6 +11,8 @@
 var ANY_COOKIE_STORE_ID = '(# of any cookie jar)';
 var currentlyEditingCookieRow = null;
 var _visibleCookieRows = null;
+var gFirstPartyIsolationEnabled = false; // Whether privacy.firstparty.isolate is true.
+var gFirstPartyDomainSupported = false; // Whether the cookies API supports firstPartyDomain.
 
 document.getElementById('searchform').onsubmit = function(e) {
     e.preventDefault();
@@ -633,6 +635,10 @@ document.getElementById('editform').onsubmit = function(event) {
     }
     cookie.storeId = document.getElementById('editform.storeId').value;
 
+    if (gFirstPartyDomainSupported) {
+        cookie.firstPartyDomain = document.getElementById('editform.firstPartyDomain').value;
+    }
+
     // Format cookie to the cookies.Cookie type.
     var newCookie = Object.assign({}, cookie);
     newCookie.hostOnly = !('domain' in newCookie);
@@ -805,6 +811,12 @@ function renderEditCookieForm(cookie, rowToEdit) {
         document.getElementById('editform.sameSite').value = cookie.sameSite;
     }
     document.getElementById('editform.storeId').value = cookie.storeId;
+    if (gFirstPartyDomainSupported) {
+        document.getElementById('editform.firstPartyDomain').value = cookie.firstPartyDomain;
+    } else {
+        document.getElementById('editform.firstPartyDomain.container').hidden = true;
+    }
+
     setEditSaveEnabled(true);
     currentlyEditingCookieRow = rowToEdit;
     document.body.classList.add('editing-cookie');
@@ -1104,6 +1116,39 @@ document.getElementById('importform').onsubmit = function(event) {
 };
 
 
+function checkFirstPartyIsolationStatus() {
+    try {
+        // firstPartyDomain is only supported in Firefox 59+.
+        browser.cookies.get({
+            name: 'dummyName',
+            firstPartyDomain: 'dummy',
+            url: 'about:blank',
+        });
+        gFirstPartyDomainSupported = true;
+    } catch (e) {
+        gFirstPartyIsolationEnabled = false;
+        gFirstPartyDomainSupported = false;
+        return Promise.resolve();
+    }
+
+    // The following result may change at runtime depending on the privacy.firstparty.isolate preference.
+    // We use the cookies API to detect whether the feature is enabled,
+    // because the alternative (browser.privacy.websites.firstPartyIsolate) requires permissions.
+    return browser.cookies.get({
+        name: 'dummyName',
+        // Using cookies.get with an invalid URL is very cheap in Firefox:
+        // https://searchfox.org/mozilla-central/rev/26b40a44691e0710838130b614c2f2662bc91eec/toolkit/components/extensions/parent/ext-cookies.js#193-199
+        url: 'about:blank',
+    }).then(() => {
+        gFirstPartyIsolationEnabled = false;
+    }, (error) => {
+        if (!error.message.includes('firstPartyDomain')) {
+            console.error('Unexpected error message. Expected firstPartyDomain error, got: ' + error);
+        }
+        gFirstPartyIsolationEnabled = true;
+    });
+}
+
 // Return a mapping from a cookieStoreId to a human-readable name.
 function getContextualIdentityNames() {
     // contextualIdentities is Firefox-only.
@@ -1265,7 +1310,13 @@ function doSearch() {
         }
     });
 
+    var fpdInputValue; // undefined = not specified, (possibly empty) string otherwise.
     var urlInputValue = document.getElementById('.url').value;
+    // "fpd:<domain>" may be at the start or end.
+    urlInputValue = urlInputValue.replace(/^fpd:(\S*) ?| ?fpd:(\S*)$/, function(_, a, b) {
+        fpdInputValue = a || b || '';
+        return '';
+    });
     if (urlInputValue) {
         if (urlInputValue.includes('/')) {
             setQueryOrFilter('url', urlInputValue);
@@ -1291,16 +1342,40 @@ function doSearch() {
     var httpOnly = query.httpOnly;
     delete query.httpOnly;
 
-    if (query.storeId !== ANY_COOKIE_STORE_ID) {
-        useCookieStoreIds(query, [query.storeId]);
-    } else {
+    checkFirstPartyIsolationStatus().then(function() {
+        if (!gFirstPartyDomainSupported) {
+            return;
+        }
+        if (fpdInputValue !== undefined) {
+            if (!fpdInputValue.includes('*')) { // Not a wildcard, possibly empty string.
+                query.firstPartyDomain = fpdInputValue;
+            } else {
+                // firstPartyDomain must explicitly be null to select all cookies.
+                query.firstPartyDomain = null;
+                if (fpdInputValue !== '*') { // '*' is same as not filtering at all.
+                    filters.firstPartyDomain = patternToRegExp(fpdInputValue);
+                }
+            }
+        } else if (gFirstPartyIsolationEnabled) {
+            // If first-party isolation is enabled, include cookies for any firstPartyDomain.
+            query.firstPartyDomain = null;
+            // TODO: Also include cookies whose firstPartyDomain matches (but url/domain does not).
+        } else {
+            // Otherwise, default to non-first-party cookies only.
+            query.firstPartyDomain = '';
+        }
+    }).then(function() {
+        if (query.storeId !== ANY_COOKIE_STORE_ID) {
+            useCookieStoreIds(query, [query.storeId]);
+            return;
+        }
         chrome.cookies.getAllCookieStores(function(cookieStores) {
             var cookieStoreIds = cookieStores.map(function(cookieStore) {
                 return cookieStore.id;
             });
             useCookieStoreIds(query, cookieStoreIds);
         });
-    }
+    });
 
     /**
      * Fetches all cookies matching `query` from the cookie stores listed in `storeIds`,
@@ -1396,6 +1471,22 @@ function doSearch() {
         var cookiesCount = cookies.length;
         var hasNoCookies = cookies.length === 0;
         var remainingCookies;
+
+        var col_fpdo = document.querySelector('.col_fpdo');
+        if (gFirstPartyIsolationEnabled) {
+            // Ensure that the FPD column exists after the Domain column.
+            var col_doma = document.querySelector('.col_doma');
+            if (col_doma.nextSibling !== col_fpdo) {
+                col_doma.parentNode.insertBefore(col_fpdo, col_doma.nextSibling);
+            }
+            col_fpdo.classList.remove('columnDisabled');
+        } else {
+            // Move element to ensure that CSS nth-child/even works as desired.
+            // Visually hide the column via CSS instead of removing to ensure that
+            // colspan/colSpan of other rows match the number of cells in the thead.
+            col_fpdo.parentNode.appendChild(col_fpdo);
+            col_fpdo.classList.add('columnDisabled');
+        }
 
         if (hasNoCookies) {
             var cell = cookiesOut.insertRow().insertCell();
@@ -1702,7 +1793,13 @@ function renderCookie(cookiesOut, cookie) {
     row.querySelector('.name_').textContent = cookie.name;
     row.querySelector('.valu_').textContent = cookie.value;
     row.querySelector('.doma_').textContent = cookie.domain;
-    row.querySelector('.path_').textContent = cookie.path;
+    if (gFirstPartyIsolationEnabled) {
+        row.querySelector('.fpdo_').textContent = cookie.firstPartyDomain;
+    } else {
+        // If First-Party Isolation is disabled, hide it from the main table.
+        row.querySelector('.fpdo_').closest('td').remove();
+        // If it is a first-party cookie, a flag will be appended.
+    }
 
     var extraInfo = [];
     if (cookieIsWhitelisted) extraInfo.push(TEXT_FLAG_WHITELIST);
@@ -1714,6 +1811,8 @@ function renderCookie(cookiesOut, cookie) {
     else if (/^firefox-container-/.test(cookie.storeId)) extraInfo.push('containerTab');
     if (cookie.sameSite === 'lax') extraInfo.push('SameSite=lax');
     else if (cookie.sameSite === 'strict') extraInfo.push('SameSite=strict');
+    // When first-party isolation is disabled, we don't show a column, so add a flag.
+    if (!gFirstPartyIsolationEnabled && cookie.firstPartyDomain) extraInfo.push('fpDomain');
 
     extraInfo = extraInfo.join(TEXT_FLAG_SEPARATOR);
     row.querySelector('.flag_').textContent = extraInfo;
@@ -2008,6 +2107,11 @@ function getDetailsForCookiesSetAPI(cookie) {
     details.httpOnly = cookie.httpOnly;
     if (cookie.sameSite) details.sameSite = cookie.sameSite;
     if (!cookie.session) details.expirationDate = cookie.expirationDate;
+
+    var firstPartyDomainInCookie = 'firstPartyDomain' in cookie;
+    console.assert(firstPartyDomainInCookie === gFirstPartyDomainSupported);
+    if (firstPartyDomainInCookie) details.firstPartyDomain = cookie.firstPartyDomain;
+
     details.storeId = cookie.storeId;
     return details;
 }
@@ -2024,11 +2128,11 @@ function isSameCookieKey(cookieA, cookieB) {
     // (where the domain starts with a dot iff it is a domain cookie (opposed to host-only)).
     // Origin attributes currently include:
     // - userContextId and privateBrowsingId -> storeId
-    // - firstPartyDomain -> TODO when 
-    // TODO: Add firstPartyDomain here when implemented - see https://bugzil.la/1381197
+    // - firstPartyDomain -> firstPartyDomain (Firefox 59+)
     if (cookieA.name !== cookieB.name ||
         cookieA.domain !== cookieB.domain ||
         cookieA.path !== cookieB.path ||
+        cookieA.firstPartyDomain !== cookieB.firstPartyDomain ||
         cookieA.storeId !== cookieB.storeId) {
         return false;
     }
