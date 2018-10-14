@@ -34,7 +34,17 @@ if (typeof browser !== 'undefined') {
             throw error;
         }
     };
+    // https://hg.mozilla.org/mozilla-central/rev/17e4514dc6e6
+    let kReplaceChars = /[\x00-\x1F/:*?"<>|\\]/g;
+    let sanitizeFirstPartyDomain = function(details) {
+        let {firstPartyDomain} = details;
+        if (kReplaceChars.test(firstPartyDomain)) {
+            // Sanitize firstPartyDomain to avoid crashes in Firefox 62 and earlier.
+            details.firstPartyDomain = firstPartyDomain.replace(kReplaceChars, '+');
+        }
+    };
     chrome.cookies.getAll = function(details, callback) {
+        sanitizeFirstPartyDomain(details);
         callback = getAllCallbackWithoutImmutableCookies(details, callback);
         if (!isPrivate(details) || !details.url && !details.domain) {
             cookiesGetAll(details, callback);
@@ -157,6 +167,7 @@ if (typeof browser !== 'undefined') {
 
     // It's assumed that the |cookie| parameter is not modified by the caller after calling us.
     chrome.cookies.set = function(cookie, callback) {
+        sanitizeFirstPartyDomain(cookie);
         function setWithCookiesAPI() {
             if (!('expirationDate' in cookie) || cookie.expirationDate > Date.now() / 1000) {
                 cookiesSet(cookie, callback);
