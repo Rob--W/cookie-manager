@@ -670,6 +670,7 @@ document.getElementById('editform').onsubmit = function(event) {
                 return;
             }
             if (!newCookie.session && cookie.expirationDate < Date.now() / 1000) {
+                addOrReplaceCookie(true);
                 return;
             }
             addOrReplaceCookie();
@@ -678,7 +679,11 @@ document.getElementById('editform').onsubmit = function(event) {
         addOrReplaceCookie();
     }
 
-    function addOrReplaceCookie() {
+    function addOrReplaceCookie(skipSetCookie) {
+        if (skipSetCookie) {
+            onCookieReplaced();
+            return;
+        }
         chrome.cookies.set(cookie, function() {
             if (rowToEdit !== currentlyEditingCookieRow) {
                 console.warn('Closed edit form while saving the cookie.');
@@ -693,7 +698,10 @@ document.getElementById('editform').onsubmit = function(event) {
                 setEditSaveEnabled(false);
                 return;
             }
+            onCookieReplaced();
+        });
 
+        function onCookieReplaced() {
             // Replace the cookie row.
             var row = document.createElement('tr');
             row.classList.add('cookie-edited');
@@ -745,7 +753,7 @@ document.getElementById('editform').onsubmit = function(event) {
                 row.querySelector('button.edit-single-cookie').focus();
                 // updateButtonView() not needed because we have copied the 'highlighted' state.
             }
-        });
+        }
     }
 
     function reportValidity(elementId, validationMessage) {
