@@ -53,7 +53,7 @@ function getAllCookieRows() {
     return Array.from(document.getElementById('result').tBodies[0].rows);
 }
 function isRowSelected(row) {
-    return row.classList.contains('highlighted');
+    return row.cmApi.isHighlighted();
 }
 
 document.getElementById('.session').onchange = function() {
@@ -69,25 +69,25 @@ document.getElementById('select-all').onclick = function() {
         document.getElementById('show-more-results-button').onclick({ ctrlKey: true, shiftKey: true, });
     }
     getAllCookieRows().forEach(function(row) {
-        row.classList.add('highlighted');
+        row.cmApi.toggleHighlight(true);
     });
     updateButtonView();
 };
 document.getElementById('select-none').onclick = function() {
     getAllCookieRows().forEach(function(row) {
-        row.classList.remove('highlighted');
+        row.cmApi.toggleHighlight(false);
     });
     updateButtonView();
 };
 document.getElementById('select-visible').onclick = function() {
     getVisibleCookieRows(true).forEach(function(row) {
-        row.classList.add('highlighted');
+        row.cmApi.toggleHighlight(true);
     });
     updateButtonView();
 };
 document.getElementById('unselect-visible').onclick = function() {
     getVisibleCookieRows(true).forEach(function(row) {
-        row.classList.remove('highlighted');
+        row.cmApi.toggleHighlight(false);
     });
     updateButtonView();
 };
@@ -705,12 +705,12 @@ document.getElementById('editform').onsubmit = function(event) {
             // Replace the cookie row.
             var row = document.createElement('tr');
             row.classList.add('cookie-edited');
-            row.classList.toggle('highlighted', rowToEdit.classList.contains('highlighted'));
             renderCookie({
                 insertRow: function() {
                     return row;
                 },
             }, newCookie);
+            row.cmApi.toggleHighlight(rowToEdit.cmApi.isHighlighted());
             var restoreButton = document.createElement('button');
             restoreButton.className = 'restore-single-cookie';
             restoreButton.textContent = 'Restore';
@@ -739,7 +739,7 @@ document.getElementById('editform').onsubmit = function(event) {
                         alert('Failed to restore cookie because of:\n' + error);
                         return;
                     }
-                    rowToEdit.classList.toggle('highlighted', row.classList.contains('highlighted'));
+                    rowToEdit.cmApi.toggleHighlight(row.cmApi.isHighlighted());
                     row.replaceWith(rowToEdit);
                     rowToEdit.focus();
                     // updateButtonView() not needed because we have copied the 'highlighted' state.
@@ -1863,12 +1863,15 @@ function renderCookie(cookiesOut, cookie) {
         if (event.altKey || event.ctrlKey || event.cmdKey || event.shiftKey) {
             return;  // Do nothing if a key modifier was pressed.
         }
-        this.classList.toggle('highlighted');
+        row.cmApi.toggleHighlight();
         updateButtonView();
     };
     row.cmApi = createBaseCookieManagerAPI(cookie);
     row.cmApi.renderDeleted = function(isDeleted) {
         row.classList.toggle('cookie-removed', isDeleted);
+    };
+    row.cmApi.renderHighlighted = function(isHighlighted) {
+        row.classList.toggle('highlighted', isHighlighted);
     };
     row.cmApi.renderListState = function() {
         if (cookieIsWhitelisted === WhitelistManager.isWhitelisted(cookie)) {
@@ -1946,10 +1949,12 @@ function renderCookie(cookiesOut, cookie) {
 }
 
 function createBaseCookieManagerAPI(cookie) {
+    // TODO: Make this a class.
     var cmApi = {
         // The caller should not modify this value!
         get rawCookie() { return cookie; },
         _isDeleted: false,
+        _isHighlighted: false,
     };
     cmApi.isDeleted = function() {
         return cmApi._isDeleted;
@@ -1957,6 +1962,18 @@ function createBaseCookieManagerAPI(cookie) {
     cmApi.setDeleted = function(isDeleted) {
         cmApi._isDeleted = !!isDeleted;
         cmApi.renderDeleted(cmApi._isDeleted);
+    };
+    cmApi.isHighlighted = function() {
+        return cmApi._isHighlighted;
+    };
+    cmApi.toggleHighlight = function(forceHighlight) {
+        if (typeof forceHighlight === 'boolean') {
+            if (cmApi._isHighlighted === forceHighlight) return;
+            cmApi._isHighlighted = forceHighlight;
+        } else {
+            cmApi._isHighlighted = !cmApi._isHighlighted;
+        }
+        cmApi.renderHighlighted(cmApi._isHighlighted);
     };
     cmApi.deleteCookie = function() {
         // Promise is resolved regardless of whether the call succeeded.
@@ -1969,6 +1986,9 @@ function createBaseCookieManagerAPI(cookie) {
         return new Promise(restoreCookie);
     };
     cmApi.renderDeleted = function(isDeleted) {
+        // Should be overridden.
+    };
+    cmApi.renderHighlighted = function(isHighlighted) {
         // Should be overridden.
     };
     cmApi.renderListState = function() {
@@ -2047,7 +2067,7 @@ function bindKeyboardToRow(row) {
         }
         switch (event.keyCode) {
         case 32: // Spacebar
-            row.classList.toggle('highlighted');
+            row.cmApi.toggleHighlight();
             updateButtonView();
             break;
         case 38: // Arrow up
@@ -2061,7 +2081,7 @@ function bindKeyboardToRow(row) {
             if (next) {
                 next.focus();
                 if (event.shiftKey) {
-                    next.classList.toggle('highlighted', row.classList.contains('highlighted'));
+                    next.cmApi.toggleHighlight(row.cmApi.isHighlighted());
                 }
             }
             break;
@@ -2157,13 +2177,13 @@ function onClickAfterTextSelection(event) {
     setButtonCount('multi-selection-select', rows.size);
     document.getElementById('multi-selection-select').onclick = function() {
         rows.forEach(function(row) {
-            row.classList.add('highlighted');
+            row.cmApi.toggleHighlight(true);
         });
         updateButtonView();
     };
     document.getElementById('multi-selection-invert').onclick = function() {
         rows.forEach(function(row) {
-            row.classList.toggle('highlighted');
+            row.cmApi.toggleHighlight();
         });
         updateButtonView();
     };
