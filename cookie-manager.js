@@ -722,7 +722,7 @@ document.getElementById('editform').onsubmit = function(event) {
                             alert('Failed to delete new cookie because of:\n' + error);
                             return;
                         }
-                        rowToEdit.restoreCookie().then(onCookieRestored);
+                        rowToEdit.cmApi.restoreCookie().then(onCookieRestored);
                     });
                 }
                 function onCookieRestored(error) {
