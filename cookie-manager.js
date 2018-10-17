@@ -705,11 +705,7 @@ document.getElementById('editform').onsubmit = function(event) {
             // Replace the cookie row.
             var row = document.createElement('tr');
             row.classList.add('cookie-edited');
-            renderCookie({
-                insertRow: function() {
-                    return row;
-                },
-            }, newCookie);
+            renderCookie(row, createBaseCookieManagerAPI(newCookie));
             row.cmApi.toggleHighlight(rowToEdit.cmApi.isHighlighted());
             var restoreButton = document.createElement('button');
             restoreButton.className = 'restore-single-cookie';
@@ -1557,10 +1553,8 @@ function doSearch() {
     function renderAllCookies(cookies, errors) {
         cookies = processAllCookies(cookies);
 
-        var cookiesOut = document.createElement('tbody');
         var cookiesCount = cookies.length;
         var hasNoCookies = cookies.length === 0;
-        var remainingCookies;
 
         var col_fpdo = document.querySelector('.col_fpdo');
         if (gFirstPartyIsolationEnabled) {
@@ -1578,8 +1572,12 @@ function doSearch() {
             col_fpdo.classList.add('columnDisabled');
         }
 
+        var result = document.getElementById('result');
+        result.classList.toggle('no-results', hasNoCookies);
+        result.tBodies[0].textContent = '';
+
         if (hasNoCookies) {
-            var cell = cookiesOut.insertRow().insertCell();
+            var cell = result.tBodies[0].insertRow().insertCell();
             cell.colSpan = 7;
             if (errors.length === 0) {
                 cell.textContent = 'No cookies found.';
@@ -1594,22 +1592,13 @@ function doSearch() {
                 cell.style.whiteSpace = 'pre-wrap';
                 cell.textContent = errors.join('\n');
             }
-            remainingCookies = [];
-        } else {
-            remainingCookies = cookies.splice(getMaxCookiesPerView());
-            cookies.forEach(function(cookie) {
-                renderCookie(cookiesOut, cookie);
-            });
         }
 
         invalidateRowReferences();
 
-        var result = document.getElementById('result');
-        result.classList.toggle('no-results', hasNoCookies);
-        result.replaceChild(cookiesOut, result.tBodies[0]);
-
-        renderRemainingCookiesFooter(remainingCookies, cookiesCount);
-        updateButtonView();
+        var cmApis = cookies.map(createBaseCookieManagerAPI);
+        var remainingCmApis = cmApis.splice(getMaxCookiesPerView());
+        appendCookiesAsRows(cmApis, remainingCmApis, cookiesCount);
     }
 
     function getMaxCookiesPerView() {
@@ -1631,40 +1620,38 @@ function doSearch() {
         return maxCookiesPerView;
     }
 
-    function renderRemainingCookiesFooter(remainingCookies, cookiesCount) {
+    function appendCookiesAsRows(cmApis, remainingCmApis, cookiesCount) {
         var result = document.getElementById('result');
-        if (remainingCookies.length === 1) {
+        if (remainingCmApis.length === 1) {
             // If there is only one row left, just render it.
-            renderCookie(result.tBodies[0], remainingCookies.shift());
+            cmApis.push(remainingCmApis.shift());
         }
-        if (remainingCookies.length === 0) {
+        var fragment = document.createDocumentFragment();
+        cmApis.forEach(function(cmApi) {
+            var tr = document.createElement('tr');
+            renderCookie(tr, cmApi);
+            fragment.appendChild(tr);
+        });
+        result.tBodies[0].appendChild(fragment);
+
+        if (remainingCmApis.length === 0) {
             result.tFoot.hidden = true;
             document.getElementById('show-more-results-button').onclick = null;
             document.getElementById('all-count-if-hidden').textContent = '';
+            updateButtonView();
             return;
         }
         document.getElementById('all-count-if-hidden').textContent = ' / ' + cookiesCount;
         var maxCookiesPerView = getMaxCookiesPerView();
         result.tFoot.hidden = false;
         document.getElementById('show-more-results-button').textContent =
-            'Show ' + maxCookiesPerView + ' more rows (out of ' + remainingCookies.length + ')';
+            'Show ' + maxCookiesPerView + ' more rows (out of ' + remainingCmApis.length + ')';
         document.getElementById('show-more-results-button').onclick = function(event) {
             // ctrl-shift-click = show all.
-            var newRemainingCookies = event.shiftKey && event.ctrlKey ? [] : remainingCookies.splice(maxCookiesPerView);
-            var fragment = document.createDocumentFragment();
-            remainingCookies.forEach(function(cookie) {
-                renderCookie({
-                    insertRow: function() {
-                        var tr = document.createElement('tr');
-                        fragment.appendChild(tr);
-                        return tr;
-                    },
-                }, cookie);
-            });
-            result.tBodies[0].appendChild(fragment);
-            renderRemainingCookiesFooter(newRemainingCookies, cookiesCount);
-            updateButtonView();
+            var newRemainingCmApis = event.shiftKey && event.ctrlKey ? [] : remainingCmApis.splice(maxCookiesPerView);
+            appendCookiesAsRows(remainingCmApis, newRemainingCmApis);
         };
+        updateButtonView();
     }
 }
 
@@ -1851,13 +1838,8 @@ cookieValidators.expirationDate = function(expirationDate) {
 
 
 
-/**
- * Render the cookies in a table
- * @param cookiesOut HTMLTableSectionElement (e.g. a tbody)
- * @param cookie chrome.cookies.Cookie type extended with "url" key.
- */
-function renderCookie(cookiesOut, cookie) {
-    var row = cookiesOut.insertRow(-1);
+function renderCookie(row, cmApi) {
+    var cookie = cmApi.rawCookie;
     row.appendChild(document.getElementById('cookie_row_template').content.cloneNode(true));
     row.onclick = function(event) {
         if (event.altKey || event.ctrlKey || event.cmdKey || event.shiftKey) {
@@ -1866,7 +1848,7 @@ function renderCookie(cookiesOut, cookie) {
         row.cmApi.toggleHighlight();
         updateButtonView();
     };
-    row.cmApi = createBaseCookieManagerAPI(cookie);
+    row.cmApi = cmApi;
     row.cmApi.renderDeleted = function(isDeleted) {
         row.classList.toggle('cookie-removed', isDeleted);
     };
@@ -1948,6 +1930,9 @@ function renderCookie(cookiesOut, cookie) {
     bindKeyboardToRow(row);
 }
 
+/**
+ * @param {object} cookie chrome.cookies.Cookie type extended with "url" key.
+ */
 function createBaseCookieManagerAPI(cookie) {
     // TODO: Make this a class.
     var cmApi = {
