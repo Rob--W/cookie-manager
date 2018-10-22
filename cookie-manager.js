@@ -13,6 +13,7 @@ var currentlyEditingCookieRow = null;
 var _visibleCookieRows = null;
 var gFirstPartyIsolationEnabled = false; // Whether privacy.firstparty.isolate is true.
 var gFirstPartyDomainSupported = false; // Whether the cookies API supports firstPartyDomain.
+var showMoreResultsRow = document.getElementById('show-more-results-row');
 
 document.getElementById('searchform').onsubmit = function(e) {
     e.preventDefault();
@@ -62,12 +63,6 @@ document.getElementById('.session').onchange = function() {
     document.getElementById('.expiry.max').disabled = this.value == 'true';
 };
 document.getElementById('select-all').onclick = function() {
-    if (!document.getElementById('show-more-results-button').hidden &&
-        getAllCookieRows().every(isRowSelected) &&
-        confirmOnce('SELECT_ALL_SHOW_ALL', 'All shown results have already been selected, but some results are hidden.\n' +
-            'Do you want to show all results before selecting them?')) {
-        document.getElementById('show-more-results-button').onclick({ ctrlKey: true, shiftKey: true, });
-    }
     getAllCookieRows().forEach(function(row) {
         row.cmApi.toggleHighlight(true);
     });
@@ -157,21 +152,29 @@ function setButtonCount(buttonId, count) {
 }
 function updateButtonView() {
     var allCookieRows = getAllCookieRows();
-    var selectedCookieRows = allCookieRows.filter(isRowSelected);
-    var deletedSelectionCount = selectedCookieRows.filter(function(row) {
-        return row.cmApi.isDeleted();
-    }).length;
-    var whitelistedSelectionCount = selectedCookieRows.reduce(function(count, row) {
-        return count + row.cmApi.getWhitelistCount();
-    }, 0);
+    var allCookieCount = 0;
+    var selectedCookieCount = 0;
+    var deletedSelectionCount = 0;
+    var whitelistedSelectionCount = 0;
+    allCookieRows.forEach(function(row) {
+        var count = row.cmApi.getCookieCount();
+        allCookieCount += count;
+        if (isRowSelected(row)) {
+            selectedCookieCount += count;
+            if (row.cmApi.isDeleted()) {
+                deletedSelectionCount += count;
+            }
+            whitelistedSelectionCount += row.cmApi.getWhitelistCount();
+        }
+    });
 
     updateVisibleButtonView();
 
-    setButtonCount('select-all', allCookieRows.length);
-    setButtonCount('select-none', selectedCookieRows.length);
-    setButtonCount('remove-selected', selectedCookieRows.length - deletedSelectionCount);
+    setButtonCount('select-all', allCookieCount);
+    setButtonCount('select-none', selectedCookieCount);
+    setButtonCount('remove-selected', selectedCookieCount - deletedSelectionCount);
     setButtonCount('restore-selected', deletedSelectionCount);
-    setButtonCount('whitelist-selected', selectedCookieRows.length - whitelistedSelectionCount);
+    setButtonCount('whitelist-selected', selectedCookieCount - whitelistedSelectionCount);
     setButtonCount('unwhitelist-selected', whitelistedSelectionCount);
 }
 var _updateVisibleButtonViewRAFHandle;
@@ -702,7 +705,6 @@ document.getElementById('editform').onsubmit = function(event) {
             var row = document.createElement('tr');
             row.classList.add('cookie-edited');
             renderCookie(row, createBaseCookieManagerAPI(newCookie));
-            row.cmApi.toggleHighlight(rowToEdit.cmApi.isHighlighted());
             var restoreButton = document.createElement('button');
             restoreButton.className = 'restore-single-cookie';
             restoreButton.textContent = 'Restore';
@@ -1549,7 +1551,6 @@ function doSearch() {
     function renderAllCookies(cookies, errors) {
         cookies = processAllCookies(cookies);
 
-        var cookiesCount = cookies.length;
         var hasNoCookies = cookies.length === 0;
 
         var col_fpdo = document.querySelector('.col_fpdo');
@@ -1594,7 +1595,7 @@ function doSearch() {
 
         var cmApis = cookies.map(createBaseCookieManagerAPI);
         var remainingCmApis = cmApis.splice(getMaxCookiesPerView());
-        appendCookiesAsRows(cmApis, remainingCmApis, cookiesCount);
+        appendCookiesAsRows(cmApis, remainingCmApis);
     }
 
     function getMaxCookiesPerView() {
@@ -1616,12 +1617,13 @@ function doSearch() {
         return maxCookiesPerView;
     }
 
-    function appendCookiesAsRows(cmApis, remainingCmApis, cookiesCount) {
+    function appendCookiesAsRows(cmApis, remainingCmApis) {
         var result = document.getElementById('result');
         if (remainingCmApis.length === 1) {
             // If there is only one row left, just render it.
             cmApis.push(remainingCmApis.shift());
         }
+
         var fragment = document.createDocumentFragment();
         cmApis.forEach(function(cmApi) {
             var tr = document.createElement('tr');
@@ -1631,18 +1633,21 @@ function doSearch() {
         result.tBodies[0].appendChild(fragment);
 
         if (remainingCmApis.length === 0) {
-            result.tFoot.hidden = true;
-            document.getElementById('show-more-results-button').onclick = null;
-            document.getElementById('all-count-if-hidden').textContent = '';
+            showMoreResultsRow.remove();
+            renderMultipleCookies(showMoreResultsRow, []);
             updateButtonView();
             return;
         }
-        document.getElementById('all-count-if-hidden').textContent = ' / ' + cookiesCount;
+        result.tBodies[0].appendChild(showMoreResultsRow);
+        renderMultipleCookies(showMoreResultsRow, remainingCmApis);
+
         var maxCookiesPerView = getMaxCookiesPerView();
-        result.tFoot.hidden = false;
         document.getElementById('show-more-results-button').textContent =
             'Show ' + maxCookiesPerView + ' more rows (out of ' + remainingCmApis.length + ')';
         document.getElementById('show-more-results-button').onclick = function(event) {
+            // The button is inside a row; normally clicking toggles the selection,
+            // but we don't want to do that.
+            event.stopPropagation();
             // ctrl-shift-click = show all.
             var newRemainingCmApis = event.shiftKey && event.ctrlKey ? [] : remainingCmApis.splice(maxCookiesPerView);
             appendCookiesAsRows(remainingCmApis, newRemainingCmApis);
@@ -1871,6 +1876,13 @@ function renderCookie(row, cmApi) {
         }
     };
 
+    if (cmApi.isHighlighted()) {
+        row.cmApi.renderHighlighted(true);
+    }
+    if (cmApi.isDeleted()) {
+        row.cmApi.renderDeleted(true);
+    }
+
     var TEXT_FLAG_SEPARATOR = ', ';
     var TEXT_FLAG_WHITELIST = 'whitelist';
     var cookieIsWhitelisted = WhitelistManager.isWhitelisted(cookie);
@@ -1926,6 +1938,35 @@ function renderCookie(row, cmApi) {
     bindKeyboardToRow(row);
 }
 
+function renderMultipleCookies(row, cmApis) {
+    if (!cmApis.length) {
+        // Release original list of cmApis from the closure.
+        row.cmApi = null;
+        return;
+    }
+    cmApis = cmApis.slice();
+
+    row.onclick = function(event) {
+        if (event.altKey || event.ctrlKey || event.cmdKey || event.shiftKey) {
+            return;  // Do nothing if a key modifier was pressed.
+        }
+        row.cmApi.toggleHighlight();
+        updateButtonView();
+    };
+    row.cmApi = wrapMultipleCookieManagerApis(cmApis);
+    row.cmApi.renderDeleted = function(isDeleted) {
+        row.classList.toggle('cookie-removed', isDeleted);
+    };
+    row.cmApi.renderHighlighted = function(isHighlighted) {
+        row.classList.toggle('highlighted', isHighlighted);
+    };
+    row.cmApi.renderListState = function() {
+        // TODO: Show whitelisted cookies in UI.
+    };
+
+    bindKeyboardToRow(row);
+}
+
 /**
  * @param {object} cookie chrome.cookies.Cookie type extended with "url" key.
  */
@@ -1967,6 +2008,9 @@ function createBaseCookieManagerAPI(cookie) {
     };
     cmApi.getWhitelistCount = function() {
         return WhitelistManager.isWhitelisted(cookie) ? 1 : 0;
+    };
+    cmApi.getCookieCount = function() {
+        return 1;
     };
     cmApi.deleteCookie = function() {
         // Promise is resolved regardless of whether the call succeeded.
@@ -2029,6 +2073,80 @@ function createBaseCookieManagerAPI(cookie) {
         });
     }
 }
+
+/**
+ * Create a manager for a list of cmApi objects. This function must have
+ * exclusive access to the cmApis, to ensure data integrity.
+ *
+ * @param {array} cmApis A non-empty list of cmApi objects.
+ */
+function wrapMultipleCookieManagerApis(cmApis) {
+    // In this function: _cmApi = wrapper on cmApis, cmApi = element in cmApi.
+    // _cmApi implements the same interface as cmApi.
+    var _cmApi = {
+        // Cannot return a single cookie; should not be used.
+        get rawCookie() { throw new Error('Should not use rawCookie'); },
+    };
+    _cmApi.isDeleted = function() {
+        return cmApis[0].isDeleted();
+    };
+    _cmApi.setDeleted = function(isDeleted) {
+        cmApis.forEach(function(cmApi) {
+            cmApi.setDeleted(isDeleted);
+        });
+    };
+    _cmApi.isHighlighted = function() {
+        return cmApis[0].isHighlighted();
+    };
+    _cmApi.toggleHighlight = function(forceHighlight) {
+        if (typeof forceHighlight !== 'boolean') {
+            forceHighlight = !_cmApi.isHighlighted();
+        }
+        cmApis.forEach(function(cmApi) {
+            cmApi.toggleHighlight(forceHighlight);
+        });
+        _cmApi.renderHighlighted(forceHighlight);
+    };
+    _cmApi.toggleWhitelist = function(forceWhitelist) {
+        cmApis.forEach(function(cmApi) {
+            cmApi.toggleHighlight(forceWhitelist);
+        });
+    };
+    _cmApi.getWhitelistCount = function() {
+        return cmApis.reduce(function(count, cmApi) {
+            return count + cmApi.getWhitelistCount();
+        }, 0);
+    };
+    _cmApi.getCookieCount = function() {
+        return cmApis.length;
+    };
+    _cmApi.deleteCookie = function() {
+        return Promise.all(cmApis.map(function(cmApi) {
+            return cmApi.deleteCookie();
+        })).then(function(errors) {
+            return Array.from(new Set(errors)).filter(e => e).join('\n');
+        });
+    };
+    _cmApi.restoreCookie = function() {
+        return Promise.all(cmApis.map(function(cmApi) {
+            return cmApi.restoreCookie();
+        })).then(function(errors) {
+            return Array.from(new Set(errors)).filter(e => e).join('\n');
+        });
+    };
+    _cmApi.renderDeleted = function(isDeleted) {
+        // Should be overridden.
+    };
+    _cmApi.renderHighlighted = function(isHighlighted) {
+        // Should be overridden.
+    };
+    _cmApi.renderListState = function() {
+        // No-op. When the row is not rendered, the state of the whitelist is not relevant.
+    };
+
+    return _cmApi;
+}
+
 function bindKeyboardToRow(row) {
     row.tabIndex = 1;
     row.onfocus = function() {
@@ -2067,9 +2185,12 @@ function bindKeyboardToRow(row) {
         case 40: // Arrow down
             var next = event.keyCode === 40 ? row.nextElementSibling : row.previousElementSibling;
             if (!next && event.keyCode === 40 &&
-                !document.getElementById('show-more-results-button').hidden) {
+                row === showMoreResultsRow) {
+                var previousRow = row.previousElementSibling;
+                console.assert(!next, 'showMoreResultsRow should be the last row');
                 document.getElementById('show-more-results-button').click();
-                next = row.nextElementSibling;
+                next = previousRow.nextElementSibling;
+                console.assert(next, 'showMoreResultsRow should have a new sibling');
             }
             if (next) {
                 next.focus();

@@ -203,7 +203,7 @@ table.no-results {
     min-width: auto;
 }
 table.no-results thead,
-table.no-results tfoot {
+table.no-results #show-more-results-row {
     display: none;
 }
 
@@ -257,11 +257,11 @@ td:nth-child(even) {
     visibility: hidden;
 }
 
-#all-count-if-hidden {
-    color: red;
+#show-more-results-row {
+    text-align: center;
 }
 #show-more-results-button {
-    width: 100%;
+    width: 80%;
     height: 3em;
 }
 
