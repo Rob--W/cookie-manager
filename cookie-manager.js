@@ -101,8 +101,11 @@ document.getElementById('unwhitelist-selected').onclick = function() {
 
 function modifyCookieRows(shouldRestore) {
     var action = shouldRestore ? 'restore' : 'remove';
-    var rows = getAllCookieRows().filter(function(row) {
-        return isRowSelected(row) && row.cmApi.isDeleted() === shouldRestore;
+    var rows = getAllCookieRows().filter(isRowSelected).filter(function(row) {
+        if (shouldRestore) {
+            return row.cmApi.isDeleted();
+        }
+        return row.cmApi.getDeletionCount() < row.cmApi.getCookieCount();
     });
     var messageId = shouldRestore ? 'BULK_RESTORE' : 'BULK_REMOVE';
     if (!confirmOnce(messageId, 'Do you really want to ' + action + ' ' + rows.length + ' selected cookies?')) {
@@ -161,9 +164,7 @@ function updateButtonView() {
         allCookieCount += count;
         if (isRowSelected(row)) {
             selectedCookieCount += count;
-            if (row.cmApi.isDeleted()) {
-                deletedSelectionCount += count;
-            }
+            deletedSelectionCount += row.cmApi.getDeletionCount();
             whitelistedSelectionCount += row.cmApi.getWhitelistCount();
         }
     });
@@ -1642,8 +1643,8 @@ function doSearch() {
         renderMultipleCookies(showMoreResultsRow, remainingCmApis);
 
         var maxCookiesPerView = getMaxCookiesPerView();
-        document.getElementById('show-more-results-button').textContent =
-            'Show ' + maxCookiesPerView + ' more rows (out of ' + remainingCmApis.length + ')';
+        document.getElementById('show-more-count').textContent = maxCookiesPerView;
+        document.getElementById('show-more-remaining-count').textContent = remainingCmApis.length;
         document.getElementById('show-more-results-button').onclick = function(event) {
             // The button is inside a row; normally clicking toggles the selection,
             // but we don't want to do that.
@@ -1961,8 +1962,12 @@ function renderMultipleCookies(row, cmApis) {
         row.classList.toggle('highlighted', isHighlighted);
     };
     row.cmApi.renderListState = function() {
-        // TODO: Show whitelisted cookies in UI.
+        var count = row.cmApi.getWhitelistCount();
+        document.getElementById('show-more-whitelist-info').textContent =
+            count ? '(' + count + ' whitelisted)' : '';
     };
+
+    row.cmApi.renderListState();
 
     bindKeyboardToRow(row);
 }
@@ -1981,9 +1986,8 @@ function createBaseCookieManagerAPI(cookie) {
     cmApi.isDeleted = function() {
         return cmApi._isDeleted;
     };
-    cmApi.setDeleted = function(isDeleted) {
-        cmApi._isDeleted = !!isDeleted;
-        cmApi.renderDeleted(cmApi._isDeleted);
+    cmApi.getDeletionCount = function() {
+        return cmApi._isDeleted ? 1 : 0;
     };
     cmApi.isHighlighted = function() {
         return cmApi._isHighlighted;
@@ -2053,7 +2057,8 @@ function createBaseCookieManagerAPI(cookie) {
             if (chrome.runtime.lastError) {
                 resolve(chrome.runtime.lastError.message);
             } else {
-                cmApi.setDeleted(true);
+                cmApi._isDeleted = true;
+                cmApi.renderDeleted(true);
                 resolve();
             }
         });
@@ -2067,7 +2072,8 @@ function createBaseCookieManagerAPI(cookie) {
             if (chrome.runtime.lastError) {
                 resolve(chrome.runtime.lastError.message);
             } else {
-                cmApi.setDeleted(false);
+                cmApi._isDeleted = false;
+                cmApi.renderDeleted(false);
                 resolve();
             }
         });
@@ -2088,12 +2094,12 @@ function wrapMultipleCookieManagerApis(cmApis) {
         get rawCookie() { throw new Error('Should not use rawCookie'); },
     };
     _cmApi.isDeleted = function() {
-        return cmApis[0].isDeleted();
+        return cmApis.some(cmApi => cmApi.isDeleted());
     };
-    _cmApi.setDeleted = function(isDeleted) {
-        cmApis.forEach(function(cmApi) {
-            cmApi.setDeleted(isDeleted);
-        });
+    _cmApi.getDeletionCount = function() {
+        return cmApis.reduce(function(count, cmApi) {
+            return count + cmApi.getDeletionCount();
+        }, 0);
     };
     _cmApi.isHighlighted = function() {
         return cmApis[0].isHighlighted();
@@ -2124,13 +2130,16 @@ function wrapMultipleCookieManagerApis(cmApis) {
         return Promise.all(cmApis.map(function(cmApi) {
             return cmApi.deleteCookie();
         })).then(function(errors) {
+            _cmApi.renderDeleted(_cmApi.isDeleted());
             return Array.from(new Set(errors)).filter(e => e).join('\n');
         });
     };
     _cmApi.restoreCookie = function() {
         return Promise.all(cmApis.map(function(cmApi) {
+            if (!WhitelistManager.isModificationAllowed(cmApi.rawCookie)) return;
             return cmApi.restoreCookie();
         })).then(function(errors) {
+            _cmApi.renderDeleted(_cmApi.isDeleted());
             return Array.from(new Set(errors)).filter(e => e).join('\n');
         });
     };
