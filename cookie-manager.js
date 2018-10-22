@@ -2190,6 +2190,16 @@ function bindKeyboardToRow(row) {
             row.cmApi.toggleHighlight();
             updateButtonView();
             break;
+        case 33: // Page up
+        case 34: // Page down
+            handlePageUpOrDown(event);
+            return;
+        case 35: // End
+            jumpRange(event, row.parentNode.rows[row.parentNode.rows.length - 1]);
+            break;
+        case 36: // Home
+            jumpRange(event, row.parentNode.rows[0]);
+            break;
         case 38: // Arrow up
         case 40: // Arrow down
             var next = event.keyCode === 40 ? row.nextElementSibling : row.previousElementSibling;
@@ -2216,6 +2226,42 @@ function bindKeyboardToRow(row) {
         }
         event.preventDefault();
     };
+
+    function handlePageUpOrDown(event) {
+        var forwards = event.keyCode === 34; // Page down
+
+        var bottomOffset = document.getElementById('footer-controls').getBoundingClientRect().top;
+        var minimumVisibleRowHeight = document.querySelector('#result thead > tr').offsetHeight || 1;
+        var scrollDelta = bottomOffset - minimumVisibleRowHeight * 2;
+        if (scrollDelta < 0) {
+            console.warn('Page height is too narrow, defaulting to default Page up/down handler');
+            return;
+        }
+
+        if (!forwards) {
+            scrollDelta *= -1;
+        }
+
+        document.documentElement.scrollTop += scrollDelta;
+        var visibleCookieRows = getVisibleCookieRows(true);
+        var nextRow = visibleCookieRows[forwards ? visibleCookieRows.length - 1 : 0];
+        if (nextRow) {
+            jumpRange(event, nextRow);
+            event.preventDefault();
+        }
+    }
+
+    function jumpRange(event, nextRow) {
+        var currentRow = event.currentTarget;
+        var forwards = currentRow.rowIndex < nextRow.rowIndex;
+        if (event.shiftKey) {
+            var forceHighlight = currentRow.cmApi.isHighlighted();
+            for (var row = currentRow; row != nextRow; row = forwards ? row.nextElementSibling : row.previousElementSibling) {
+                row.cmApi.toggleHighlight(forceHighlight);
+            }
+        }
+        nextRow.focus();
+    }
 
     function deleteThisRowCookie() {
         var msg = 'Do you really want to delete the currently focused cookie?';
