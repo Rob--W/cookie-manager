@@ -129,7 +129,7 @@ window.chrome = {
                 Object.keys(items).forEach(function(key) {
                     sessionStorage[key] = JSON.stringify(items[key]);
                 });
-                cb();
+                if (cb) cb();
             },
         },
     },
