@@ -139,11 +139,7 @@ function modifyCookieRows(shouldRestore) {
 function whitelistCookieRows(shouldWhitelist) {
     var allCookieRows = getAllCookieRows();
     allCookieRows.filter(isRowSelected).forEach(function(row) {
-        if (shouldWhitelist) {
-            WhitelistManager.addToList(row.cmApi.rawCookie);
-        } else {
-            WhitelistManager.removeFromList(row.cmApi.rawCookie);
-        }
+        row.cmApi.toggleWhitelist(shouldWhitelist);
     });
     // The rows need to separately be updated, because there may be more than one cookie that
     // matches a (domain, name) pair.
@@ -165,9 +161,9 @@ function updateButtonView() {
     var deletedSelectionCount = selectedCookieRows.filter(function(row) {
         return row.cmApi.isDeleted();
     }).length;
-    var whitelistedSelectionCount = selectedCookieRows.filter(function(row) {
-        return WhitelistManager.isWhitelisted(row.cmApi.rawCookie);
-    }).length;
+    var whitelistedSelectionCount = selectedCookieRows.reduce(function(count, row) {
+        return count + row.cmApi.getWhitelistCount();
+    }, 0);
 
     updateVisibleButtonView();
 
@@ -1959,6 +1955,18 @@ function createBaseCookieManagerAPI(cookie) {
             cmApi._isHighlighted = !cmApi._isHighlighted;
         }
         cmApi.renderHighlighted(cmApi._isHighlighted);
+    };
+    cmApi.toggleWhitelist = function(forceWhitelist) {
+        // Require a boolean until we have a legitimate need for making the param optional.
+        if (typeof forceWhitelist != 'boolean') throw new Error('Expecting a boolean');
+        if (forceWhitelist) {
+            WhitelistManager.addToList(cookie);
+        } else {
+            WhitelistManager.removeFromList(cookie);
+        }
+    };
+    cmApi.getWhitelistCount = function() {
+        return WhitelistManager.isWhitelisted(cookie) ? 1 : 0;
     };
     cmApi.deleteCookie = function() {
         // Promise is resolved regardless of whether the call succeeded.
