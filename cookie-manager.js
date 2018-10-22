@@ -875,6 +875,11 @@ var CookieExporter = {
         });
         return KEYS;
     },
+    // returns true if this exporter might recognize the format.
+    probe(text) {
+        // Does it look like a JSON-serialized format?
+        return /^\s*\{[\s\S]*\}\s*$/.test(text);
+    },
     // cookies is a list of chrome.cookie.Cookie objects.
     serialize(cookies) {
         // serialize() is called internally, so it should never fail. Still, perform some validation
@@ -896,7 +901,7 @@ var CookieExporter = {
         };
         return JSON.stringify(exported, null, 1).replace('"placeholder"', serializedCookies);
     },
-    deserialize(serialized) {
+    deserialize(serialized, overrideStore) {
         var imported;
         try {
             imported = JSON.parse(serialized);
@@ -914,6 +919,9 @@ var CookieExporter = {
                 throw new Error('Invalid cookie at index ' + i + ': ' + validationMessage);
             }
             cookie.url = cookieToUrl(cookie);
+            if (overrideStore) {
+                cookie.storeId = overrideStore;
+            }
         }
         return cookies;
     },
@@ -948,6 +956,101 @@ var CookieExporter = {
         // cookies.set will reject with an error.
     },
 };
+var HTTP_ONLY = '#HttpOnly_';
+var NetscapeCookieExporter = {
+    // Format: tab-separated fields:
+    // - domain: e.g. ".example.com" or "www.example.net"
+    // - flag (TRUE/FALSE): host-only cookie
+    // - path
+    // - secure (TRUE/FALSE): https
+    // - expiration: UNIX epoch
+    // - name
+    // - value
+    // Refs: https://unix.stackexchange.com/a/210282 and curl lib/cookie.c
+    // Lines starting with "#HttpOnly_" are httpOnly.
+    // Lines starting with '#' are ignored.
+    // This format ignores: session, storeId, sameSite, firstPartyDomain.
+    probe(text) {
+        // Tries to find one line that matches the format.
+        return /^\S+\t(TRUE|FALSE)\t[^\t\n]+\t(TRUE|FALSE)\t\d+\t[^\t\n]*\t/m.test(text);
+    },
+    serialize(cookies) {
+        var output = '# Netscape HTTP Cookie File\n\n';
+        cookies.forEach((cookie) => {
+            if (cookie.httpOnly) {
+                output += HTTP_ONLY;
+            }
+            output += [
+                cookie.domain,
+                cookie.hostOnly ? 'TRUE' : 'FALSE',
+                cookie.path,
+                cookie.secure ? 'TRUE' : 'FALSE',
+                cookie.expirationDate || 0,
+                cookie.name,
+                cookie.value,
+            ].join('\t') + '\n';
+        });
+        return output;
+    },
+    deserialize(serialized, overrideStore) {
+        if (!overrideStore) {
+            throw new Error('A destination cookie jar must be explicitly selected');
+        }
+        var cookies = [];
+        serialized.split('\n').forEach((line, i) => {
+            line = line.replace('\r', '');
+            var throwInvalidCookie = (msg) => {
+                throw new Error(`Invalid cookie at line ${i + 1}: ${msg}. Line: ${line}`);
+            };
+            var toBool = (str) => {
+                if (str === 'TRUE') {
+                    return true;
+                } else if (str === 'FALSE') {
+                    return false;
+                } else {
+                    throwInvalidCookie('Expected TRUE or FALSE for a field');
+                }
+            };
+            var fields = line.split('\t');
+            var httpOnly = line.startsWith(HTTP_ONLY);
+            if (line === '' || line.startsWith('#') && !httpOnly) {
+                // skip empty lines and comments.
+                return;
+            }
+            if (fields.length !== 7) {
+                throwInvalidCookie('Too few or too many fields');
+            }
+            var cookie = {
+                domain: fields[0],
+                hostOnly: toBool(fields[1]),
+                path: fields[2],
+                secure: toBool(fields[3]),
+                expirationDate: 1 * fields[4],
+                name: fields[5],
+                value: fields[6],
+                httpOnly: httpOnly,
+                storeId: overrideStore,
+            };
+            if (httpOnly) {
+                cookie.domain = cookie.domain.substr(HTTP_ONLY.length);
+            }
+            if (isNaN(cookie.expirationDate)) {
+                throwInvalidCookie('Bad expiry date');
+            }
+            if (cookie.expirationDate === 0) {
+                delete cookie.expirationDate;
+                cookie.session = true;
+            }
+            var validationMessage = CookieExporter.validateCookieObject(cookie);
+            if (validationMessage) {
+                throwInvalidCookie(validationMessage);
+            }
+            cookie.url = cookieToUrl(cookie);
+            cookies.push(cookie);
+        });
+        return cookies;
+    }
+};
 document.getElementById('export-cancel').onclick = function() {
     document.getElementById('exportform').reset();
     document.getElementById('export-text').hidden = true;
@@ -964,12 +1067,20 @@ document.getElementById('import-cancel').onclick = function() {
 };
 document.getElementById('exportform').onsubmit = function(event) {
     event.preventDefault();
+    var exportFormat = document.querySelector('#exportform input[name="export-format"]:checked').value;
     var exportType = document.querySelector('#exportform input[name="export-type"]:checked').value;
 
     var cookies = getAllCookieRows().filter(isRowSelected).map(function(row) {
         return row.cmApi.rawCookie;
     });
-    var text = CookieExporter.serialize(cookies);
+    var filename, text;
+    if (exportFormat === 'netscape') {
+        filename = 'cookies.txt';
+        text = NetscapeCookieExporter.serialize(cookies);
+    } else {
+        filename = 'cookies.json';
+        text = CookieExporter.serialize(cookies);
+    }
 
     if (exportType === 'file') {
         // Trigger the download from a child frame to work around a Firefox bug where an attempt to
@@ -978,7 +1089,7 @@ document.getElementById('exportform').onsubmit = function(event) {
         f.style.position = 'fixed';
         f.style.left = f.style.top = '-999px';
         f.style.width = f.style.height = '99px';
-        f.srcdoc = '<a download="cookies.json" target="_blank">cookies.json</a>';
+        f.srcdoc = `<a download="${filename}" target="_blank">${filename}</a>`;
         f.onload = function() {
             var blob = new Blob([text], {type: 'application/json'});
             var a = f.contentDocument.querySelector('a');
@@ -1027,14 +1138,25 @@ document.getElementById('importform').onsubmit = function(event) {
         importText(document.getElementById('import-text').value);
     }
 
+    function guessExporter(text) {
+        var exporters = [CookieExporter, NetscapeCookieExporter];
+        return exporters.find((exporter) => exporter.probe(text));
+    }
+
     function importText(text) {
         if (!text) {
             importError('Failed to import: You must select a file or use the text field.');
             return;
         }
+        var exporter = guessExporter(text);
+        if (!exporter) {
+            importError('Failed to import: unrecognized format');
+            return;
+        }
+        var overrideStore = document.getElementById('import-store').value;
         var cookies;
         try {
-            cookies = CookieExporter.deserialize(text);
+            cookies = exporter.deserialize(text, overrideStore);
         } catch (e) {
             importError('Failed to import: ' + e.message);
             return;
@@ -1112,6 +1234,8 @@ document.getElementById('importform').onsubmit = function(event) {
     function importStarted() {
         // Disallow concurrent imports.
         document.getElementById('import-import').disabled = true;
+        // Clear previous error messages.
+        importOutput('');
     }
     function importFinished() {
         document.getElementById('import-import').disabled = false;
@@ -1222,25 +1346,35 @@ function updateCookieStoreIds() {
 
         var cookieJarDropdown = document.getElementById('.storeId');
         var editCoJarDropdown = document.getElementById('editform.storeId');
+        var importCoJarDropdown = document.getElementById('import-store');
         var selectedValue = cookieJarDropdown.value;
         var editValue = editCoJarDropdown.value;
+        var importValue = importCoJarDropdown.value;
         cookieJarDropdown.textContent = '';
         cookieJarDropdown.appendChild(new Option('Any cookie jar', ANY_COOKIE_STORE_ID));
         editCoJarDropdown.textContent = '';
+        // Remove all cookie stores except for the "implied" one.
+        importCoJarDropdown.length = 1;
         // TODO: Do something with cookieStores[*].tabIds ?
         cookieStores.forEach(function(cookieStore) {
             var option = new Option(storeIdToHumanName(cookieStore.id, contextualIdNameMap), cookieStore.id);
             cookieJarDropdown.appendChild(option.cloneNode(true));
             editCoJarDropdown.appendChild(option.cloneNode(true));
+            importCoJarDropdown.add(option.cloneNode(true));
         });
         cookieJarDropdown.value = selectedValue;
         editCoJarDropdown.value = editValue;
+        importCoJarDropdown.value = importValue;
         if (cookieJarDropdown.selectedIndex === -1) {
             cookieJarDropdown.value = ANY_COOKIE_STORE_ID;
         }
         if (editCoJarDropdown.selectedIndex === -1) {
             // Presumably the default cookie jar.
             editCoJarDropdown.selectedIndex = 0;
+        }
+        if (importCoJarDropdown.selectedIndex === -1) {
+            // Select the cookie jar implied from the format.
+            importCoJarDropdown.selectedIndex = 0;
         }
     });
 }

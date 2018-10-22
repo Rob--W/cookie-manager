@@ -48,7 +48,7 @@ var _fakeCookies = (() => {
         if (i % 2) {
             cookie.session = true;
         } else {
-            cookie.expirationDate = (Date.now() + 15000 * (i - 10)) / 1000;
+            cookie.expirationDate = Math.floor((Date.now() + 15000 * (i - 10)) / 1000);
         }
         if (!cookie.hostOnly) {
             cookie.domain = '.' + cookie.domain;

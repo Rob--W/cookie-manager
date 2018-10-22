@@ -174,12 +174,38 @@ By <a href="https://robwu.nl">Rob Wu</a>.
             Choose the export format and click on the "Export" button to
             export <span id="export-cookie-count">cookies</span>.
             <p>
-            When exported as a file, the exported data is downloaded as "cookies.json".<br>
+            Use the JSON format if you would like to restore cookies later while
+            preserving all metadata (storeId, sameSite, firstPartyDomain).
+            Use the Netscape format if you would like to use the cookies with
+            other tools such as curl. Either format can be imported later.
+            <p>
+            When exported as a file, the exported data is downloaded as
+            "cookies.json" or "cookies.txt".<br>
             When exported as text, the exported data is shown in a text field.
+        </div>
+
+        <div>
+            Output format:
         </div>
         <div>
             <label>
-                <input type="radio" name="export-type" value="file" required>
+                <input type="radio" name="export-format" value="json" required checked>
+                JSON (full backup that preserves all metadata)
+            </label>
+        </div>
+        <div>
+            <label>
+                <input type="radio" name="export-format" value="netscape" required>
+                Netscape (for use with tools like curl)
+            </label>
+        </div>
+
+        <div>
+            Export as:
+        </div>
+        <div>
+            <label>
+                <input type="radio" name="export-type" value="file" required checked>
                 Export as file
             </label>
         </div>
@@ -197,11 +223,18 @@ By <a href="https://robwu.nl">Rob Wu</a>.
     <div class="stretched-textarea-container flexible-fieldset">
         <legend>Import cookies</legend>
         <div>
-            Select a file or paste the exported data (JSON) in the input field.
+            Select a file or paste the exported data (JSON) or Netscape HTTP
+            Cookie file in the input field.
             <p>
             When you click on the "Import" button, the cookies will be validated
             and overwrite existing cookies, without confirmation
             (except for whitelisted cookies).
+        </div>
+        <div>
+            Destination cookie jar:
+            <select id="import-store">
+                <option value="">As specified in the imported file</option>
+            </select>
         </div>
         <output></output>
         <progress hidden></progress>
