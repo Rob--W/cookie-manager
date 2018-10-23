@@ -1999,6 +1999,9 @@ function renderCookie(row, cmApi) {
         if (event.altKey || event.ctrlKey || event.cmdKey || event.shiftKey) {
             return;  // Do nothing if a key modifier was pressed.
         }
+        if (!isEmptyTextSelection()) {
+            return;
+        }
         row.cmApi.toggleHighlight();
         updateButtonView();
     };
@@ -2102,6 +2105,9 @@ function renderMultipleCookies(row, cmApis) {
     row.onclick = function(event) {
         if (event.altKey || event.ctrlKey || event.cmdKey || event.shiftKey) {
             return;  // Do nothing if a key modifier was pressed.
+        }
+        if (!isEmptyTextSelection()) {
+            return;
         }
         row.cmApi.toggleHighlight();
         updateButtonView();
