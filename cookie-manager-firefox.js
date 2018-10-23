@@ -82,6 +82,30 @@ if (typeof browser !== 'undefined') {
     };
 
     chrome.cookies.getAllCookieStores = function(callback) {
+        if (window.browser.contextualIdentities) {
+            // getAllCookieStores only returns cookie stores with an active tab - bugzil.la/1486274
+            // Let's query the list of containers and add those too.
+            // This is also done to ensure a stable and consistent ordering.
+            Promise.all([
+                window.browser.contextualIdentities.query({}).catch(() => []),
+                window.browser.cookies.getAllCookieStores(),
+            ]).then(function([contextualIdentities, activeCookieStores]) {
+                var cookieStoreIds = contextualIdentities.map(ci => ci.cookieStoreId);
+                if (activeCookieStores.some(cs => cs.id === 'firefox-private')) {
+                    cookieStoreIds.unshift('firefox-private');
+                }
+                cookieStoreIds.unshift('firefox-default');
+                var cookieStores = cookieStoreIds.map(id => {
+                    let cookieStore = activeCookieStores.find(cs => cs.id === id);
+                    if (cookieStore) {
+                        return cookieStore;
+                    }
+                    return {id, tabIds: []};
+                });
+                callback(cookieStores);
+            });
+            return;
+        }
         cookiesGetAllCookieStores(function(cookieStores) {
             if (cookieStores) {
                 callback(cookieStores);
