@@ -14,20 +14,6 @@ var _FAKE_FPD_SUPPORT =
     location.href.includes('fpd=1') ? true :
     true; // Default to true for now.
 
-if (_FAKE_FPD_SUPPORT && typeof browser === 'undefined') {
-    window.addEventListener("load", function() {
-        console.assert(typeof checkFirstPartyIsolationStatus === 'function',
-            'checkFirstPartyIsolationStatus should be defined by cookie-manager.js');
-        window.checkFirstPartyIsolationStatus = function() {
-            /* globals gFirstPartyIsolationEnabled:true */
-            /* globals gFirstPartyDomainSupported:true */
-            gFirstPartyIsolationEnabled = true;
-            gFirstPartyDomainSupported = true;
-            return Promise.resolve();
-        };
-    });
-}
-
 var _fakeCookies = (() => {
     var cookies = [];
     var value = '#';
@@ -90,6 +76,20 @@ function _getFakeCookies(details) {
 
 if (window.chrome && window.chrome.cookies) {
     throw new Error('Do not load fake-api-snippet.js in an extension!');
+}
+
+if (_FAKE_FPD_SUPPORT) {
+    window.addEventListener("load", function() {
+        console.assert(typeof checkFirstPartyIsolationStatus === 'function',
+            'checkFirstPartyIsolationStatus should be defined by cookie-manager.js');
+        window.checkFirstPartyIsolationStatus = function() {
+            /* globals gFirstPartyIsolationEnabled:true */
+            /* globals gFirstPartyDomainSupported:true */
+            gFirstPartyIsolationEnabled = true;
+            gFirstPartyDomainSupported = true;
+            return Promise.resolve();
+        };
+    });
 }
 
 // The bare minimum of chrome.* APIs that are used by cookie-manager.js
