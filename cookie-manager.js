@@ -20,8 +20,8 @@ document.getElementById('searchform').onsubmit = function(e) {
     doSearch();
 };
 
-document.body.addEventListener('selectstart', function(event) {
-    document.body.addEventListener('mouseup', onMouseUpAfterTextSelection);
+document.documentElement.addEventListener('selectstart', function(event) {
+    document.documentElement.addEventListener('mouseup', onMouseUpAfterTextSelection);
 });
 
 chrome.extension.isAllowedIncognitoAccess(function(isAllowedAccess) {
@@ -2523,7 +2523,7 @@ function onClickAfterTextSelection(event) {
     // tool to be hidden via other mouse events (opposed to keyboard events).
     multiSelectionTool.addEventListener('mouseenter', cancelHideMultiSelectionTool);
     multiSelectionTool.addEventListener('mouseleave', hideMultiSelectionToolAfterDelay);
-    document.body.addEventListener('mousedown', hideMultiSelectionToolOnMousedown);
+    document.documentElement.addEventListener('mousedown', hideMultiSelectionToolOnMousedown);
 }
 function hideMultiSelectionTool() {
     document.getElementById('multi-selection-select').onclick = null;
@@ -2532,10 +2532,10 @@ function hideMultiSelectionTool() {
     multiSelectionTool.hidden = true;
     multiSelectionTool.removeEventListener('mouseenter', cancelHideMultiSelectionTool);
     multiSelectionTool.removeEventListener('mouseleave', hideMultiSelectionToolAfterDelay);
-    document.body.removeEventListener('mousedown', hideMultiSelectionToolOnMousedown);
+    document.documentElement.removeEventListener('mousedown', hideMultiSelectionToolOnMousedown);
 
     if (isEmptyTextSelection()) {
-        document.body.removeEventListener('mouseup', onMouseUpAfterTextSelection);
+        document.documentElement.removeEventListener('mouseup', onMouseUpAfterTextSelection);
     }
 }
 function cancelHideMultiSelectionTool() {
