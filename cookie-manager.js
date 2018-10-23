@@ -762,6 +762,7 @@ document.getElementById('editform').onsubmit = function(event) {
 };
 
 // Only show sameSite controls if supported by the API.
+document.getElementById('.sameSite').hidden =
 document.getElementById('editform.sameSiteBox').hidden = !chrome.cookies.SameSiteStatus;
 
 document.getElementById('editform').oninput =
@@ -1430,6 +1431,7 @@ function doSearch() {
         'secure',
         'httpOnly',
         'session',
+        'sameSite',
         'storeId',
     ].forEach(function(param) {
         var input = document.getElementById('.' + param);
@@ -1478,6 +1480,10 @@ function doSearch() {
     // Filter by httpOnly. The chrome.cookies API somehow does not support filtering by httpOnly...
     var httpOnly = query.httpOnly;
     delete query.httpOnly;
+
+    // Filter by sameSite. The chrome.cookies API does not support filtering by sameSite status.
+    var sameSite = query.sameSite;
+    delete query.sameSite;
 
     var parsedUrl;
     if (query.url) {
@@ -1662,6 +1668,7 @@ function doSearch() {
 
         cookies = cookies.filter(function(cookie) {
             if (httpOnly !== undefined && cookie.httpOnly !== httpOnly ||
+                sameSite !== undefined && cookie.sameSite !== sameSite ||
                 !cookie.session && (
                     !isNaN(expiryMinFilter) && cookie.expirationDate < expiryMinFilter ||
                     !isNaN(expiryMaxFilter) && cookie.expirationDate > expiryMaxFilter)) {
@@ -2062,8 +2069,8 @@ function renderCookie(row, cmApi) {
     if (cookie.storeId === '1') extraInfo.push('incognito');
     else if (cookie.storeId === 'firefox-private') extraInfo.push('private');
     else if (/^firefox-container-/.test(cookie.storeId)) extraInfo.push('container');
-    if (cookie.sameSite === 'lax') extraInfo.push('SameSite=lax');
-    else if (cookie.sameSite === 'strict') extraInfo.push('SameSite=strict');
+    if (cookie.sameSite === 'lax') extraInfo.push('sameSite=lax');
+    else if (cookie.sameSite === 'strict') extraInfo.push('sameSite=strict');
     // When first-party isolation is disabled, we don't show a column, so add a flag.
     if (!gFirstPartyIsolationEnabled && cookie.firstPartyDomain) extraInfo.push('fpDomain');
 

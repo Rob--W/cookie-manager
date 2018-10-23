@@ -16,7 +16,7 @@ If you have suggestions or questions, open an issue at https://github.com/Rob--W
 ## Supported features
 
 - Viewing all cookies
-- Querying cookies by any combination of url, domain, path, cookie content (name/value), httpOnly/secure/session flags, expiration time range.
+- Querying cookies by any combination of url, domain, path, cookie content (name/value), httpOnly/secure/sameSite/session flags, expiration time range.
 - Recognizes cookie jars (default, private browsing mode, container tabs aka userContext).
 - Allows you to remove individual cookies, or all matching cookies with one click.
 - Supports Firefox for Android (Fennec)

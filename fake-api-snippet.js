@@ -26,6 +26,7 @@ var _fakeCookies = (() => {
             storeId: (i % 12) ? 'firefox-default' : 'firefox-private',
             hostOnly: (i % 9) === 0,
             httpOnly: (i % 4) === 1,
+            sameSite: (i % 17) === 0 ? 'lax' : (i % 17) === 1 ? 'strict' : 'no_restriction',
             secure: (i % 6) === 0,
         };
         if (_FAKE_FPD_SUPPORT) {
@@ -151,6 +152,7 @@ window.chrome = {
         },
     },
     cookies: {
+        SameSiteStatus: {LAX: "lax", NO_RESTRICTION: "no_restriction", STRICT: "strict"},
         getAllCookieStores(cb) {
             cb([
                 {id:'firefox-default'},
