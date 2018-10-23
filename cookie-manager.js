@@ -2509,6 +2509,11 @@ function onClickAfterTextSelection(event) {
         updateButtonView();
     };
 
+    // Initially we have a mouseleave listener to easily and automatically
+    // hide this tool. Do not show the Cancel button to not encourage an
+    // unnecessary click inside the tool (which would clear the selection).
+    document.getElementById('multi-selection-cancel').hidden = true;
+
     cancelHideMultiSelectionTool();
     var multiSelectionTool = document.getElementById('multi-selection-tool');
 
@@ -2528,6 +2533,7 @@ function onClickAfterTextSelection(event) {
 function hideMultiSelectionTool() {
     document.getElementById('multi-selection-select').onclick = null;
     document.getElementById('multi-selection-invert').onclick = null;
+    document.getElementById('multi-selection-cancel').onclick = null;
     var multiSelectionTool = document.getElementById('multi-selection-tool');
     multiSelectionTool.hidden = true;
     multiSelectionTool.removeEventListener('mouseenter', cancelHideMultiSelectionTool);
@@ -2548,7 +2554,26 @@ function hideMultiSelectionToolAfterDelay() {
 }
 function hideMultiSelectionToolOnMousedown(event) {
     // The following line should probably be kept in sync with onMouseUpAfterTextSelection.
-    if (event.button !== 0 || event.target.closest('#multi-selection-tool')) return;
+    if (event.button !== 0) return;
+    var multiSelectionTool = event.target.closest('#multi-selection-tool');
+    if (multiSelectionTool) {
+        // When the user is interacting with the multi-selection tool,
+        // they probably don't care about the text selection itself.
+        var selection = window.getSelection();
+        if (selection) {
+            selection.removeAllRanges();
+        }
+        // Since the selection has been removed, reset all listeners and
+        // pending tasks that assume the existence of a selection.
+        clearTimeout(_delayedMultiSelectShower);
+        document.documentElement.removeEventListener('mouseup', onMouseUpAfterTextSelection);
+
+        // Require the user to take an explicit user action to close the tool.
+        multiSelectionTool.removeEventListener('mouseleave', hideMultiSelectionToolAfterDelay);
+        document.getElementById('multi-selection-cancel').hidden = false;
+        document.getElementById('multi-selection-cancel').onclick = hideMultiSelectionTool;
+        return;
+    }
     hideMultiSelectionTool();
 }
 

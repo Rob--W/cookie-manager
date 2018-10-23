@@ -277,7 +277,7 @@ td:nth-child(even) {
     background: white;
     text-align: center;
 }
-#multi-selection-tool > button {
+#multi-selection-tool > button:not([hidden]) {
     display: block;
     width: 100%;
 }
