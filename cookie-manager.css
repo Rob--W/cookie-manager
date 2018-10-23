@@ -261,7 +261,7 @@ td:nth-child(even) {
     text-align: center;
 }
 #show-more-results-button {
-    width: 80%;
+    width: calc(100% - 30ch);
     height: 3em;
 }
 
