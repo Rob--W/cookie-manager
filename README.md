@@ -20,7 +20,7 @@ If you have suggestions or questions, open an issue at https://github.com/Rob--W
 - Recognizes cookie jars (default, private browsing mode, container tabs aka userContext).
 - Allows you to remove individual cookies, or all matching cookies with one click.
 - Supports Firefox for Android (Fennec)
-- Supports the TOR Browser
+- Supports the TOR Browser (and first-party domain cookies)
 - Add cookies
 - Edit cookies
 - Import / export cookies
