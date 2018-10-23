@@ -2061,7 +2061,7 @@ function renderCookie(row, cmApi) {
     if (cookie.httpOnly) extraInfo.push('httpOnly');
     if (cookie.storeId === '1') extraInfo.push('incognito');
     else if (cookie.storeId === 'firefox-private') extraInfo.push('private');
-    else if (/^firefox-container-/.test(cookie.storeId)) extraInfo.push('containerTab');
+    else if (/^firefox-container-/.test(cookie.storeId)) extraInfo.push('container');
     if (cookie.sameSite === 'lax') extraInfo.push('SameSite=lax');
     else if (cookie.sameSite === 'strict') extraInfo.push('SameSite=strict');
     // When first-party isolation is disabled, we don't show a column, so add a flag.
