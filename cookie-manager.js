@@ -1779,13 +1779,31 @@ function doSearch() {
         var maxCookiesPerView = getMaxCookiesPerView();
         document.getElementById('show-more-count').textContent = maxCookiesPerView;
         document.getElementById('show-more-remaining-count').textContent = remainingCmApis.length;
+
+        var shouldIgnoreClick = false;
         document.getElementById('show-more-results-button').onclick = function(event) {
+            if (shouldIgnoreClick) {
+                // Do not propagate the button click to the row.
+                event.stopPropagation();
+                return;
+            }
             // The button is inside a row; normally clicking toggles the selection,
             // but we don't want to do that.
             event.stopPropagation();
             // ctrl-shift-click = show all.
             var newRemainingCmApis = event.shiftKey && event.ctrlKey ? [] : remainingCmApis.splice(maxCookiesPerView);
             appendCookiesAsRows(remainingCmApis, newRemainingCmApis);
+        };
+        document.getElementById('show-more-results-button').onkeyup = function(event) {
+            if (event.keyCode === 32) {
+                // Pressing spacebar on a button usually causes the button to be clicked.
+                // Since the spacebar is used to toggle the row selection, prevent the
+                // spacebar from triggering a button click too.
+                shouldIgnoreClick = true;
+                setTimeout(function() {
+                    shouldIgnoreClick = false;
+                }, 0);
+            }
         };
         updateButtonView();
     }
