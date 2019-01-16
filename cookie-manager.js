@@ -983,7 +983,7 @@ var NetscapeCookieExporter = {
             }
             output += [
                 cookie.domain,
-                cookie.hostOnly ? 'TRUE' : 'FALSE',
+                cookie.hostOnly ? 'FALSE' : 'TRUE',
                 cookie.path,
                 cookie.secure ? 'TRUE' : 'FALSE',
                 cookie.expirationDate || 0,
