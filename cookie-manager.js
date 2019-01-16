@@ -1023,7 +1023,7 @@ var NetscapeCookieExporter = {
             }
             var cookie = {
                 domain: fields[0],
-                hostOnly: toBool(fields[1]),
+                hostOnly: !toBool(fields[1]),
                 path: fields[2],
                 secure: toBool(fields[3]),
                 expirationDate: 1 * fields[4],
