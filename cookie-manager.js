@@ -961,7 +961,7 @@ var HTTP_ONLY = '#HttpOnly_';
 var NetscapeCookieExporter = {
     // Format: tab-separated fields:
     // - domain: e.g. ".example.com" or "www.example.net"
-    // - flag (TRUE/FALSE): host-only cookie
+    // - flag (TRUE/FALSE): whether it is a domain cookie
     // - path
     // - secure (TRUE/FALSE): https
     // - expiration: UNIX epoch
