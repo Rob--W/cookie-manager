@@ -156,7 +156,7 @@
         try {
             var months = [];
             var dtf = new Intl.DateTimeFormat(navigator.language, {month:'long'});
-            var d = new Date();
+            var d = new Date(2000, 1, 1);
             for (var i = 0; i < 12; ++i) {
                 d.setMonth(i);
                 months[i] = dtf.formatToParts(d).filter(function(part) { return part.type === 'month'; })[0].value;
