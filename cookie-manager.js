@@ -56,6 +56,15 @@ function getAllCookieRows() {
 function isRowSelected(row) {
     return row.cmApi.isHighlighted();
 }
+// Returns all selected rows or (if none are selected) all visible rows.
+function getAllSelectedCookieRows() {
+    var rows = getAllCookieRows();
+    var selectedRows = rows.filter(isRowSelected);
+    if (selectedRows.length) {
+        return selectedRows;
+    }
+    return rows;
+}
 
 document.getElementById('.session').onchange = function() {
     // Expiry is only meaningful for non-session cookies
@@ -344,7 +353,7 @@ var OtherActionsController = {
     },
 
     bulk_export() {
-        var selectionCount = getAllCookieRows().filter(isRowSelected).length;
+        var selectionCount = getAllSelectedCookieRows().length;
         if (!selectionCount) {
             alert('You have not selected any cookies to export.\n' +
                 'Please search for cookies and select some cookies before trying to export them.');
@@ -1071,7 +1080,7 @@ document.getElementById('exportform').onsubmit = function(event) {
     var exportFormat = document.querySelector('#exportform input[name="export-format"]:checked').value;
     var exportType = document.querySelector('#exportform input[name="export-type"]:checked').value;
 
-    var cookies = getAllCookieRows().filter(isRowSelected).map(function(row) {
+    var cookies = getAllSelectedCookieRows().map(function(row) {
         return row.cmApi.rawCookie;
     });
     var filename, text;
