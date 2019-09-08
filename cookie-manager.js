@@ -12,7 +12,7 @@ var ANY_COOKIE_STORE_ID = '(# of any cookie jar)';
 var currentlyEditingCookieRow = null;
 var _visibleCookieRows = null;
 var gFirstPartyIsolationEnabled = false; // Whether privacy.firstparty.isolate is true.
-var gFirstPartyDomainSupported = false; // Whether the cookies API supports firstPartyDomain.
+var gFirstPartyDomainSupported; // Whether the cookies API supports firstPartyDomain.
 var showMoreResultsRow = document.getElementById('show-more-results-row');
 
 document.getElementById('searchform').onsubmit = function(e) {
@@ -1188,12 +1188,21 @@ document.getElementById('importform').onsubmit = function(event) {
         document.getElementById('import-log').hidden = false;
         document.getElementById('import-cancel').disabled = true;
 
+        var deleteSameSite = cookies.some(c => 'sameSite' in c) && !chrome.cookies.SameSiteStatus;
+        var deleteFirstPartyDomain = cookies.some(c => 'firstPartyDomain' in c) && !checkFirstPartyDomainSupport();
+
         var progress = 0;
         var failCount = 0;
         cookies.forEach(function(cookie, i) {
             if (cookie.expirationDate < Date.now() / 1000) {
                 onImportedOneCookie('Did not import cookie ' + i + ' because it has been expired.');
                 return;
+            }
+            if (deleteSameSite) {
+                delete cookie.sameSite;
+            }
+            if (deleteFirstPartyDomain) {
+                delete cookie.firstPartyDomain;
             }
             var details = getDetailsForCookiesSetAPI(cookie);
             chrome.cookies.set(details, function() {
@@ -1243,8 +1252,10 @@ document.getElementById('importform').onsubmit = function(event) {
     }
 };
 
-
-function checkFirstPartyIsolationStatus() {
+function checkFirstPartyDomainSupport() {
+    if (gFirstPartyDomainSupported !== undefined) {
+        return gFirstPartyDomainSupported;
+    }
     try {
         // firstPartyDomain is only supported in Firefox 59+.
         browser.cookies.get({
@@ -1254,8 +1265,14 @@ function checkFirstPartyIsolationStatus() {
         });
         gFirstPartyDomainSupported = true;
     } catch (e) {
-        gFirstPartyIsolationEnabled = false;
         gFirstPartyDomainSupported = false;
+    }
+    return gFirstPartyDomainSupported;
+}
+
+function checkFirstPartyIsolationStatus() {
+    if (!checkFirstPartyDomainSupport()) {
+        gFirstPartyIsolationEnabled = false;
         return Promise.resolve();
     }
 
