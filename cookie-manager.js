@@ -1189,6 +1189,7 @@ document.getElementById('importform').onsubmit = function(event) {
         document.getElementById('import-cancel').disabled = true;
 
         var deleteSameSite = cookies.some(c => 'sameSite' in c) && !chrome.cookies.SameSiteStatus;
+        var convertSameSiteUnspecified = !deleteSameSite && chrome.cookies.SameSiteStatus.UNSPECIFIED;
         var deleteFirstPartyDomain = cookies.some(c => 'firstPartyDomain' in c) && !checkFirstPartyDomainSupport();
 
         var progress = 0;
@@ -1199,6 +1200,13 @@ document.getElementById('importform').onsubmit = function(event) {
                 return;
             }
             if (deleteSameSite) {
+                delete cookie.sameSite;
+            }
+            if (convertSameSiteUnspecified && cookie.sameSite === "unspecified") {
+                // Firefox doesn't support SameSite=unspecified in the cookies API.
+                // https://bugzilla.mozilla.org/show_bug.cgi?id=1550032
+                // Chrome supports it since 76.0.3787.0
+                // https://chromium.googlesource.com/chromium/src/+/218d4eae63313b8fcf80f4befab679d1a200c57b
                 delete cookie.sameSite;
             }
             if (deleteFirstPartyDomain) {
