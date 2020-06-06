@@ -47,6 +47,8 @@ chrome.extension.isAllowedIncognitoAccess(function(isAllowedAccess) {
         };
     }
 });
+// Note: some rows may represent multiple cookies, see
+// renderMultipleCookies and wrapMultipleCookieManagerApis.
 function getAllCookieRows() {
     if (document.querySelector('#result.no-results')) {
         return [];
@@ -344,7 +346,9 @@ var OtherActionsController = {
     },
 
     bulk_export() {
-        var selectionCount = getAllCookieRows().filter(isRowSelected).length;
+        var selectionCount = getAllCookieRows().filter(isRowSelected).reduce(function(c, row) {
+            return c + row.cmApi.getCookieCount();
+        }, 0);
         if (!selectionCount) {
             alert('You have not selected any cookies to export.\n' +
                 'Please search for cookies and select some cookies before trying to export them.');
@@ -1071,8 +1075,11 @@ document.getElementById('exportform').onsubmit = function(event) {
     var exportFormat = document.querySelector('#exportform input[name="export-format"]:checked').value;
     var exportType = document.querySelector('#exportform input[name="export-type"]:checked').value;
 
-    var cookies = getAllCookieRows().filter(isRowSelected).map(function(row) {
-        return row.cmApi.rawCookie;
+    var cookies = [];
+    getAllCookieRows().filter(isRowSelected).forEach(function(row) {
+        row.cmApi.forEachRawCookie(function(cookie) {
+            cookies.push(cookie);
+        });
     });
     var filename, text;
     if (exportFormat === 'netscape') {
@@ -2173,6 +2180,9 @@ function createBaseCookieManagerAPI(cookie) {
         _isDeleted: false,
         _isHighlighted: false,
     };
+    cmApi.forEachRawCookie = function(callback) {
+        callback(cookie);
+    };
     cmApi.isDeleted = function() {
         return cmApi._isDeleted;
     };
@@ -2282,6 +2292,9 @@ function wrapMultipleCookieManagerApis(cmApis) {
     var _cmApi = {
         // Cannot return a single cookie; should not be used.
         get rawCookie() { throw new Error('Should not use rawCookie'); },
+    };
+    _cmApi.forEachRawCookie = function(callback) {
+        cmApis.forEach(cmApi => callback(cmApi.rawCookie));
     };
     _cmApi.isDeleted = function() {
         return cmApis.some(cmApi => cmApi.isDeleted());
