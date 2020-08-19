@@ -980,6 +980,9 @@ var CookieExporter = {
         if (cookie == null || typeof cookie !== 'object')
             return 'cookie has an invalid type. Expected object';
 
+        // cookieJar fix
+        if (cookie.name == null && typeof cookie.key === 'string')
+            cookie.name = cookie.key
         // matching chrome & firefox cookies expires format
         var checkCookieExpires = this.correctCookieExpires(cookie)
         if (checkCookieExpires != null)
