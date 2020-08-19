@@ -875,6 +875,7 @@ var CookieExporter = {
         hostOnly: false,
         httpOnly: false,
         secure: false,
+        storeId: 'firefox-default'
     },
     get KEYS() {
         var KEYS = Object.keys(CookieExporter.KEY_TYPES);
