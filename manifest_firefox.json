@@ -1,7 +1,7 @@
 {
     "name": "Cookie Manager",
     "description": "An efficient cookie manager. View, edit, delete and search for cookies. Designed for privacy aware users. Automatically opens the Cookie Manager upon extension startup (this can be configured via the UI).",
-    "version": "1.5",
+    "version": "1.6",
     "manifest_version": 2,
     "permissions": [
         "activeTab",
