@@ -27,6 +27,16 @@ document.documentElement.addEventListener('selectstart', function(event) {
 chrome.extension.isAllowedIncognitoAccess(function(isAllowedAccess) {
     if (!isAllowedAccess) {
         var introContainer = document.querySelector('.no-results td');
+        if (location.protocol === 'moz-extension:') {
+            // Firefox.
+            introContainer.insertAdjacentHTML(
+                'beforeend',
+                '<br>To see cookies from Private Browsing, <a href="' +
+                'https://support.mozilla.org/en-US/kb/extensions-private-browsing#w_enabling-or-disabling-extensions-in-private-windows' +
+                '" target="_blank">enable the extension to run in private windows.</a>'
+            );
+            return;
+        }
         introContainer.insertAdjacentHTML(
             'beforeend',
             '<br>To see incognito cookies, visit <a class="ext-settings"></a>' +
