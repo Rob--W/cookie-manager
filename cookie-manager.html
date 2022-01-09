@@ -11,6 +11,7 @@
     <input type="text" id=".url" placeholder="filter by url or domain (* = wildcard)" title="Filters the cookies by website. Supported formats:
 - Full URL ( http://example.com/path )
 - Domain ( example.com, *.example.com, *example* )
+- partition:&lt;top-level-site-here&lt; ( partition:https://example.com )
 ">
     <input type="text" id=".name" placeholder="filter by name" title="Filters the cookies by name.">
     <input type="text" id=".value" placeholder="filter by value" title="Filters the cookies by value.">
@@ -56,6 +57,7 @@
 <td><div class="cell-content valu_"></div></td>
 <td><div class="cell-content doma_"></div></td>
 <td><div class="cell-content fpdo_"></div></td>
+<td><div class="cell-content pkey_"></div></td>
 <td><div class="cell-content flag_"></div></td>
 <td><div class="cell-content expi_"></div></td>
 <td class="action-buttons"><button class="edit-single-cookie">Edit</button></td>
@@ -68,6 +70,8 @@
             <th class="col_valu"><span>Value</span></th>
             <th class="col_doma"><span>Domain</span></th>
             <th class="col_fpdo"><span title="First-Party domain for First-Party Isolation">First-Party Domain</span></th>
+            <th class="col_pkey"><span title="Top-level site of cookie partition.
+Add partition: to the search box to look up cookies in specific partitions.">Partition</span></th>
             <th class="col_flag"><span>Flags</span></th>
             <th class="col_expi"><span>Expiry date</span></th>
             <th class="col_butt"><!-- Action buttons --></th>
@@ -171,6 +175,10 @@ By <a href="https://robwu.nl">Rob Wu</a>.
     <fieldset id="editform.firstPartyDomain.container">
         <legend>First-Party domain for First-Party Isolation</legend>
         <input type="text" id="editform.firstPartyDomain">
+    </fieldset>
+    <fieldset id="editform.partitionKey.container">
+        <legend>Top level site for cookie partitioning</legend>
+        <input type="text" id="editform.partitionKey">
     </fieldset>
     <br> <!-- Work-around for bugzil.la/1498552 - force a gap of 1em. -->
 </form>

@@ -221,7 +221,8 @@ tbody tr:hover {
 .name_,
 .valu_,
 .doma_,
-.fpdo_ {
+.fpdo_,
+.pkey_ {
     word-break: break-all;
 }
 th:nth-child(even),
@@ -321,6 +322,7 @@ td:nth-child(even) {
     .col_valu { width: auto; } /* take the rest of the space - min width is enforced in table's min-width */
     .col_doma { width: 20ch; } /* domains are significant, try to fit them all */
     .col_fpdo { width: 20ch; } /* first-party domain, if enabled (may be non-existent) */
+    .col_pkey { width: 20ch; } /* top-level site partition, if enabled (may be non-existent) */
     .col_flag { width: 11ch; } /* big enough to fit httpOnly, private, secure and container */
     .col_expi { width: 11ch; } /* big enough to fit a date and split the time to the next line */
     .col_butt { width:  8ch; } /* big enough to fit a edit/restore button. */
@@ -340,6 +342,7 @@ td:nth-child(even) {
     .col_valu { width: auto; }
     .col_doma { width: auto; }
     .col_fpdo { width: auto; }
+    .col_pkey { width: auto; }
     .col_flag { width: 11ch; }
     .col_expi { width: 11ch; }
     .col_butt { width:  8ch; }
@@ -356,6 +359,7 @@ td:nth-child(even) {
     .col_valu { width: auto; }
     .col_doma { width: auto; }
     .col_fpdo { width: auto; }
+    .col_pkey { width: auto; }
     .col_flag { width:  7ch; } /* httpOnly, private and secure still fit without break */
     .col_expi { width: 11ch; }
     .col_butt { width:  8ch ;}
@@ -371,9 +375,11 @@ td:nth-child(even) {
 }
 
 /* First-Party domain column is optional */
-.col_fpdo.columnDisabled {
+.col_fpdo.columnDisabled,
+.col_pkey.columnDisabled {
     width: 0;
 }
-.col_fpdo.columnDisabled span {
+.col_fpdo.columnDisabled span,
+.col_pkey.columnDisabled span {
     display: none;
 }

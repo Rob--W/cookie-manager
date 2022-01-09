@@ -13,6 +13,7 @@ var currentlyEditingCookieRow = null;
 var _visibleCookieRows = null;
 var gFirstPartyIsolationEnabled = false; // Whether privacy.firstparty.isolate is true.
 var gFirstPartyDomainSupported; // Whether the cookies API supports firstPartyDomain.
+var gPartitionKeySupported; // Whether the cookies API supports partitionKey.
 var showMoreResultsRow = document.getElementById('show-more-results-row');
 
 document.getElementById('searchform').onsubmit = function(e) {
@@ -655,6 +656,9 @@ document.getElementById('editform').onsubmit = function(event) {
     if (gFirstPartyDomainSupported) {
         cookie.firstPartyDomain = document.getElementById('editform.firstPartyDomain').value;
     }
+    if (checkPartitionKeySupport()) {
+        cookie.partitionKey = partitionKeyFromString(document.getElementById('editform.partitionKey').value);
+    }
 
     // Format cookie to the cookies.Cookie type.
     var newCookie = Object.assign({}, cookie);
@@ -840,6 +844,11 @@ function renderEditCookieForm(cookie, rowToEdit) {
     } else {
         document.getElementById('editform.firstPartyDomain.container').hidden = true;
     }
+    if (checkPartitionKeySupport()) {
+        document.getElementById('editform.partitionKey').value = cookieToPartitionKeyString(cookie);
+    } else {
+        document.getElementById('editform.partitionKey.container').hidden = true;
+    }
 
     setEditSaveEnabled(true);
     currentlyEditingCookieRow = rowToEdit;
@@ -886,6 +895,8 @@ var CookieExporter = {
         sameSite: ['string', 'undefined'],
         // Firefox 59+:
         firstPartyDomain: ['string', 'undefined'],
+        // Firefox 94+:
+        partitionKey: ['string', 'undefined'],
     },
     get KEYS() {
         var KEYS = Object.keys(CookieExporter.KEY_TYPES);
@@ -990,7 +1001,7 @@ var NetscapeCookieExporter = {
     // Refs: https://unix.stackexchange.com/a/210282 and curl lib/cookie.c
     // Lines starting with "#HttpOnly_" are httpOnly.
     // Lines starting with '#' are ignored.
-    // This format ignores: session, storeId, sameSite, firstPartyDomain.
+    // This format ignores: session, storeId, sameSite, firstPartyDomain, partitionKey.
     probe(text) {
         // Tries to find one line that matches the format.
         return /^\S+\t(TRUE|FALSE)\t[^\t\n]+\t(TRUE|FALSE)\t\d+\t[^\t\n]*\t/m.test(text);
@@ -1214,6 +1225,7 @@ document.getElementById('importform').onsubmit = function(event) {
         var deleteSameSite = cookies.some(c => 'sameSite' in c) && !chrome.cookies.SameSiteStatus;
         var convertSameSiteUnspecified = !deleteSameSite && chrome.cookies.SameSiteStatus.UNSPECIFIED;
         var deleteFirstPartyDomain = cookies.some(c => 'firstPartyDomain' in c) && !checkFirstPartyDomainSupport();
+        var deletePartitionKey = cookies.some(c => 'partitionKey' in c) && !checkPartitionKeySupport();
 
         var progress = 0;
         var failCount = 0;
@@ -1234,6 +1246,13 @@ document.getElementById('importform').onsubmit = function(event) {
             }
             if (deleteFirstPartyDomain) {
                 delete cookie.firstPartyDomain;
+            }
+            // partitionKey not supported at all, ignore the property.
+            // TODO: If partitionKey supports properties other than "topLevelSite",
+            // then we need to feature-detect that and selectively delete if needed.
+            // See comment in checkPartitionKeySupport.
+            if (deletePartitionKey) {
+                delete cookie.partitionKey;
             }
             var details = getDetailsForCookiesSetAPI(cookie);
             chrome.cookies.set(details, function() {
@@ -1323,6 +1342,29 @@ function checkFirstPartyIsolationStatus() {
         }
         gFirstPartyIsolationEnabled = true;
     });
+}
+
+function checkPartitionKeySupport() {
+    if (gPartitionKeySupported !== undefined) {
+        return gPartitionKeySupported;
+    }
+    try {
+        // firstPartyDomain is only supported in Firefox 94+.
+        // It may be supported in a version of Chrome, see
+        // https://github.com/WICG/CHIPS/issues/6#issuecomment-932423839
+        // TODO: If partitionKey ever supports other properties, then we need to
+        // update cookieToPartitionKeyString / partitionKeyFromString to account
+        // for that (and convert / ignore properties if applicable).
+        chrome.cookies.get({
+            name: 'dummyName',
+            partitionKey: { topLevelSite: "" },
+            url: 'about:blank',
+        });
+        gPartitionKeySupported = true;
+    } catch (e) {
+        gPartitionKeySupported = false;
+    }
+    return gPartitionKeySupported;
 }
 
 // Return a mapping from a cookieStoreId to a human-readable name.
@@ -1498,10 +1540,17 @@ function doSearch() {
     });
 
     var fpdInputValue; // undefined = not specified, (possibly empty) string otherwise.
+    var pkeyInputValue; // undefined = not specified, (possibly empty) stirng otherwise.
     var urlInputValue = document.getElementById('.url').value;
     // "fpd:<domain>" may be at the start or end.
     urlInputValue = urlInputValue.replace(/^fpd:(\S*) ?| ?fpd:(\S*)$/, function(_, a, b) {
         fpdInputValue = a || b || '';
+        return '';
+    });
+    // "partition:<site>" may be at the start or end.
+    // Mutually exclusive with fpd.
+    urlInputValue = urlInputValue.replace(/^partition:(\S*) ?| ?partition:(\S*)$/, function(_, a, b) {
+        pkeyInputValue = a || b || '';
         return '';
     });
     if (urlInputValue) {
@@ -1546,6 +1595,28 @@ function doSearch() {
 
     var extraFirstPartyQuery;
     var compiledFilters = [];
+
+    if (checkPartitionKeySupport()) {
+        // We're going to include partitioned cookies by default.
+        //
+        // By default, partitioned cookies are not returned. A non-void
+        // partitionKey value should be set to return partitioned cookies.
+        // `partitionKey: {}` means to match any cookie, partitioned or not.
+        query.partitionKey = {};
+        if (pkeyInputValue !== undefined) {
+            if (!pkeyInputValue.includes('*')) {
+                // Note: this should be a valid URL.
+                query.partitionKey = partitionKeyFromString(pkeyInputValue);
+            } else if (pkeyInputValue !== '*') {
+                let pkeyRegexp = patternToRegExp(pkeyInputValue);
+                compiledFilters.push(function matchesPartitionKey(cookie) {
+                    return pkeyRegexp.test(cookieToPartitionKeyString(cookie));
+                });
+            }
+        } else {
+            // TODO: Apply domain/url filter to filter like FPD.
+        }
+    }
 
     checkFirstPartyIsolationStatus().then(function() {
         if (!gFirstPartyDomainSupported) {
@@ -1757,6 +1828,25 @@ function doSearch() {
             // colspan/colSpan of other rows match the number of cells in the thead.
             col_fpdo.parentNode.appendChild(col_fpdo);
             col_fpdo.classList.add('columnDisabled');
+        }
+        var col_pkey = document.querySelector('.col_pkey');
+        if (checkPartitionKeySupport()) {
+            // Ensure that the PKEY column is shown after Domain,
+            // or even after FPD if the FPD column is visible.
+            var col_prev =
+                gFirstPartyIsolationEnabled ?
+                document.querySelector('.col_fpdo') :
+                document.querySelector('.col_doma');
+            if (col_prev.nextSibling !== col_pkey) {
+                col_prev.parentNode.insertBefore(col_pkey, col_prev.nextSibling);
+            }
+            col_pkey.classList.remove('columnDisabled');
+        } else {
+            // Move element to ensure that CSS nth-child/even works as desired.
+            // Visually hide the column via CSS instead of removing to ensure that
+            // colspan/colSpan of other rows match the number of cells in the thead.
+            col_pkey.parentNode.appendChild(col_pkey);
+            col_pkey.classList.add('columnDisabled');
         }
 
         var result = document.getElementById('result');
@@ -2108,6 +2198,12 @@ function renderCookie(row, cmApi) {
         row.querySelector('.fpdo_').closest('td').remove();
         // If it is a first-party cookie, a flag will be appended.
     }
+    if (checkPartitionKeySupport()) {
+        row.querySelector('.pkey_').textContent = cookieToPartitionKeyString(cookie);
+    } else {
+        // If partitionKey is not supported in this browser, hide it from the main table.
+        row.querySelector('.pkey_').closest('td').remove();
+    }
 
     var extraInfo = [];
     if (cookieIsWhitelisted) extraInfo.push(TEXT_FLAG_WHITELIST);
@@ -2121,6 +2217,9 @@ function renderCookie(row, cmApi) {
     else if (cookie.sameSite === 'strict') extraInfo.push('sameSite=strict');
     // When first-party isolation is disabled, we don't show a column, so add a flag.
     if (!gFirstPartyIsolationEnabled && cookie.firstPartyDomain) extraInfo.push('fpDomain');
+    // When partitionKey is not supported, it is stripped from the cookie so we
+    // won't end up here. Unlike firstPartyDomain above, we always show the
+    // partitionKey column when possible.
 
     extraInfo = extraInfo.join(TEXT_FLAG_SEPARATOR);
     row.querySelector('.flag_').textContent = extraInfo;
@@ -2661,6 +2760,29 @@ function cookieToUrl(cookie) {
     url += cookie.path;
     return url;
 }
+
+// Convert the cookie.partitionKey to a canonical string that can be shown
+// to the user (and used for comparisons).
+function cookieToPartitionKeyString(cookie) {
+    var partitionKey = cookie.partitionKey || {};
+    // partitionKey currently supports the topLevelSite key only.
+    // TODO: If partitionKey ever supports other properties, then we'd need
+    // to account for that. See checkPartitionKeySupport.
+    return partitionKey.topLevelSite || "";
+}
+// Given a topLevelSite string, return an equivalent value that can be used
+// as an input to all cookies methods.
+function partitionKeyFromString(topLevelSite) {
+    var partitionKey;
+    if (topLevelSite) {
+        partitionKey = { topLevelSite };
+    }
+    // Note: topLevelSite void or empty string means unpartitioned.
+    // Let partitionKey be void instead of an object with void/empty partitionKey,
+    // because in cookies.getAll an empty object means "return all cookies, including partitioned" instead of "unpartitioned cookies".
+    return partitionKey;
+}
+
 /**
  * @param cookie chrome.cookies.Cookie type extended with "url" key.
  * @returns {object} A parameter for the cookies.set API.
@@ -2683,6 +2805,8 @@ function getDetailsForCookiesSetAPI(cookie) {
     console.assert(firstPartyDomainInCookie === gFirstPartyDomainSupported);
     if (firstPartyDomainInCookie) details.firstPartyDomain = cookie.firstPartyDomain;
 
+    if (cookie.partitionKey) details.partitionKey = cookie.partitionKey;
+
     details.storeId = cookie.storeId;
     return details;
 }
@@ -2704,6 +2828,7 @@ function isSameCookieKey(cookieA, cookieB) {
         cookieA.domain !== cookieB.domain ||
         cookieA.path !== cookieB.path ||
         cookieA.firstPartyDomain !== cookieB.firstPartyDomain ||
+        cookieToPartitionKeyString(cookieA) !== cookieToPartitionKeyString(cookieB) ||
         cookieA.storeId !== cookieB.storeId) {
         return false;
     }
