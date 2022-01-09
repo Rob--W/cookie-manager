@@ -649,6 +649,9 @@ document.getElementById('editform').onsubmit = function(event) {
     }
     cookie.storeId = document.getElementById('editform.storeId').value;
 
+    // The edit form is only visible after doSearch() is called, which calls
+    // checkFirstPartyDomainSupport() via checkFirstPartyIsolationStatus() that
+    // initializes gFirstPartyDomainSupported.
     if (gFirstPartyDomainSupported) {
         cookie.firstPartyDomain = document.getElementById('editform.firstPartyDomain').value;
     }
@@ -829,6 +832,9 @@ function renderEditCookieForm(cookie, rowToEdit) {
         document.getElementById('editform.sameSite').value = cookie.sameSite;
     }
     document.getElementById('editform.storeId').value = cookie.storeId;
+    // The edit form is only visible after doSearch() is called, which calls
+    // checkFirstPartyDomainSupport() via checkFirstPartyIsolationStatus() that
+    // initializes gFirstPartyDomainSupported.
     if (gFirstPartyDomainSupported) {
         document.getElementById('editform.firstPartyDomain').value = cookie.firstPartyDomain;
     } else {
