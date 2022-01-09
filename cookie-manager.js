@@ -691,16 +691,16 @@ document.getElementById('editform').onsubmit = function(event) {
                 return;
             }
             if (!newCookie.session && cookie.expirationDate < Date.now() / 1000) {
-                addOrReplaceCookie(true);
+                addOrReplaceCookie(true, true);
                 return;
             }
-            addOrReplaceCookie();
+            addOrReplaceCookie(false, true);
         });
     } else {
         addOrReplaceCookie();
     }
 
-    function addOrReplaceCookie(skipSetCookie) {
+    function addOrReplaceCookie(skipSetCookie, restoreOnError) {
         if (skipSetCookie) {
             onCookieReplaced();
             return;
@@ -712,7 +712,16 @@ document.getElementById('editform').onsubmit = function(event) {
 
             var errorMessage = chrome.runtime.lastError && chrome.runtime.lastError.message;
             if (errorMessage) {
-                alert('Failed to save cookie because of:\n' + errorMessage);
+                // Run the error handler asynchronously, so that the presence of
+                // runtime.lastError does not interfere with the restoreCookie
+                // logic (the alert() call can block the callback, and then
+                // restoreCookie may mis-interpret the error).
+                Promise.resolve().then(function() {
+                    if (restoreOnError) {
+                        rowToEdit.cmApi.restoreCookie();
+                    }
+                    alert('Failed to save cookie because of:\n' + errorMessage);
+                });
                 return;
             }
             if (!rowToEdit) {
