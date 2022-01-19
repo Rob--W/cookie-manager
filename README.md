@@ -21,6 +21,7 @@ If you have suggestions or questions, open an issue at https://github.com/Rob--W
 - Allows you to remove individual cookies, or all matching cookies with one click.
 - Supports Firefox for Android (Fennec)
 - Supports the TOR Browser (and first-party domain cookies)
+- Supports partitioned cookies (known as State Partitioning or Total Cookie Protection)
 - Add cookies
 - Edit cookies
 - Import / export cookies
