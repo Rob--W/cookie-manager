@@ -1603,9 +1603,11 @@ function doSearch() {
     }
 
     var extraFirstPartyQuery;
+    var extraPartitionedQuery;
     var compiledFilters = [];
 
-    if (checkPartitionKeySupport()) {
+    // partitionKey and firstPartyDomain (dFPI and FPI) are mutually exclusive.
+    if (checkPartitionKeySupport() && !fpdInputValue) {
         // We're going to include partitioned cookies by default.
         //
         // By default, partitioned cookies are not returned. A non-void
@@ -1623,7 +1625,22 @@ function doSearch() {
                 });
             }
         } else {
-            // TODO: Apply domain/url filter to filter like FPD.
+            // While the firstPartyDomain implementation puts much more effort
+            // into trying to match FPD cookies (not just when query.url is
+            // set, but also query.domain), we will only do that if a URL is
+            // given, for performance reasons.  Otherwise the default cookie
+            // query would have to look up all cookies and filter the result,
+            // which is quite expensive.
+            if (parsedUrl) {
+                extraPartitionedQuery = Object.assign({}, query);
+                delete extraPartitionedQuery.url;
+                // Not set in practice, because mutually exclusive with url,
+                // but delete just in case we change the implementation:
+                delete extraPartitionedQuery.domain;
+                // topLevelSite is automatically normalized to the site,
+                // even if we pass the full URL.
+                extraPartitionedQuery.partitionKey = partitionKeyFromString(parsedUrl.href);
+            }
         }
     }
 
@@ -1753,6 +1770,21 @@ function doSearch() {
                     return cookie.firstPartyDomain !== extraFirstPartyQuery.firstPartyDomain;
                 });
                 return promiseCookies(extraFirstPartyQuery, storeId).then(function(extraCookies) {
+                    return cookies.concat(extraCookies);
+                });
+            }).then(function(cookies) {
+                if (!extraPartitionedQuery) {
+                    return cookies;
+                }
+                // The original query looks for cookies with the matching URL,
+                // the extra query returns cookies whose topLevelSite matches the URL.
+                // Same-site cookies (frames where the top level is the same site)
+                // are not partitioned, so there are no cookies where top-level site
+                // matches with the cookie's URL,
+                // except possibly when the public suffix has changed.
+                // In the worst case we just end up with duplicate cookies, which is
+                // a reasonable fallback for this unexpected scenario.
+                return promiseCookies(extraPartitionedQuery, storeId).then(function(extraCookies) {
                     return cookies.concat(extraCookies);
                 });
             });
