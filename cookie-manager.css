@@ -7,6 +7,7 @@ body {
      * queries that use the "ch" unit, since the "ch" unit for media
      * queries does not account for the overridden font. */
     font-size: 1rem;
+    font-family: sans-serif;
 }
 
 #searchform > * {
