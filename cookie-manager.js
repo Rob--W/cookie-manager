@@ -120,8 +120,21 @@ function modifyCookieRows(shouldRestore) {
         }
         return row.cmApi.getDeletionCount() < row.cmApi.getCookieCount();
     });
+    var cookieCount = rows.reduce(function(c, row) {
+        if (shouldRestore) {
+            return c + row.cmApi.getDeletionCount();
+        } else {
+            return c + row.cmApi.getCookieCount();
+        }
+    }, 0);
     var messageId = shouldRestore ? 'BULK_RESTORE' : 'BULK_REMOVE';
-    if (!confirmOnce(messageId, 'Do you really want to ' + action + ' ' + rows.length + ' selected cookies?')) {
+    var messageStr =
+        'Do you really want to ' + action + ' ' + (
+            rows.length === cookieCount ?
+            rows.length + ' selected cookies?' :
+            rows.length + ' selected rows with ' + cookieCount + ' cookies?'
+        );
+    if (!confirmOnce(messageId, messageStr)) {
         return;
     }
     // Promises that always resolve. Upon success, a void value. Otherwise an error string.
