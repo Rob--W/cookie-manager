@@ -905,7 +905,7 @@ var CookieExporter = {
         // Firefox 59+:
         firstPartyDomain: ['string', 'undefined'],
         // Firefox 94+:
-        partitionKey: ['string', 'undefined'],
+        partitionKey: ['object', 'undefined'],
     },
     get KEYS() {
         var KEYS = Object.keys(CookieExporter.KEY_TYPES);
