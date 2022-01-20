@@ -27,6 +27,7 @@ If you have suggestions or questions, open an issue at https://github.com/Rob--W
 - Import / export cookies
   - JSON format for backup and restoration purposes.
   - Netscape HTTP Cookie File format for use with other tools like curl and wget.
+  - Copying cookies to a different cookie jar.
 
 
 ## Searching for cookies

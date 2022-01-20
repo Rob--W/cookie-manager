@@ -1095,6 +1095,7 @@ var NetscapeCookieExporter = {
 document.getElementById('export-cancel').onclick = function() {
     document.getElementById('exportform').reset();
     document.getElementById('export-text').hidden = true;
+    document.getElementById('export-before-import').hidden = true;
     document.body.classList.remove('exporting-cookies');
 };
 document.getElementById('import-cancel').onclick = function() {
@@ -1105,6 +1106,11 @@ document.getElementById('import-cancel').onclick = function() {
     document.getElementById('import-log').hidden = true;
     document.getElementById('import-log').value = '';
     document.body.classList.remove('importing-cookies');
+};
+document.getElementById('shortcut-to-import-form').onclick = function(event) {
+    event.preventDefault(); // Do not submit export form.
+    document.getElementById('export-cancel').click();
+    OtherActionsController.bulk_import();
 };
 document.getElementById('exportform').onsubmit = function(event) {
     event.preventDefault();
@@ -1117,6 +1123,14 @@ document.getElementById('exportform').onsubmit = function(event) {
             cookies.push(cookie);
         });
     });
+    if (exportType === 'copy_import') {
+        document.getElementById('import-text').value = CookieExporter.serialize(cookies);
+        document.getElementById('export-before-import').hidden = false;
+        document.getElementById('export-text').hidden = true;
+        return;
+    }
+    document.getElementById('export-before-import').hidden = true;
+
     var filename, text;
     if (exportFormat === 'netscape') {
         filename = 'cookies.txt';

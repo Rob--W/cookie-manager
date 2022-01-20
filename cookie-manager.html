@@ -231,7 +231,25 @@ By <a href="https://robwu.nl">Rob Wu</a>.
                 Export as text
             </label>
         </div>
+        <div>
+            <label>
+                <input type="radio" name="export-type" value="copy_import" required>
+                Copy to "Import cookies" form (prepare copy to different cookie jar)
+            </label>
+        </div>
         <textarea id="export-text" hidden></textarea>
+        <div id="export-before-import" hidden>
+            <p>
+            Copied cookies to "Import cookies" form.
+            <p>
+            <button id="shortcut-to-import-form">
+                Click here to switch to the "Import cookies" form
+            </button>
+            <p>
+            In the "Import cookies" form, the "Destination cookie jar" option
+            can be changed to effectively copy the cookies to a different
+            cookie jar.
+        </div>
     </div>
 </form>
 
