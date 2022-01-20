@@ -2,18 +2,58 @@
     box-sizing: border-box;
 }
 
+:root {
+    --bgcolor: white;
+    --fgcolor: black;
+    --box-border-color: silver;
+    --input-faded-border-color: #CCC;
+    --input-hover-bgcolor: #EEE;
+    --warning-fgcolor: red;
+    --button-action-border-color: black;
+    --button-emphasis-fgcolor: blue;
+    --row-soft-border-color: #DDD;
+    --row-hover-border-color: orange;
+    --column-even-bgcolor: #EEE;
+    --column-highlight-odd-bgcolor: #FFA;
+    --column-highlight-even-bgcolor: #FF6;
+}
+@supports (color-scheme: dark) {
+    :root {
+        color-scheme: light dark;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bgcolor: black;
+            --fgcolor: #eee;
+            --box-border-color: #777;
+            --input-faded-border-color: #666;
+            --input-hover-bgcolor: #111;
+            --warning-fgcolor: red;
+            --button-action-border-color: black;
+            --button-emphasis-fgcolor: #fff;
+            --row-soft-border-color: #444;
+            --row-hover-border-color: #b70;
+            --column-even-bgcolor: #333;
+            --column-highlight-odd-bgcolor: #885;
+            --column-highlight-even-bgcolor: #888;
+        }
+    }
+}
+
 body {
     /* TODO: If you ever decide to change the font, check the media
      * queries that use the "ch" unit, since the "ch" unit for media
      * queries does not account for the overridden font. */
     font-size: 1rem;
     font-family: sans-serif;
+    background: var(--bgcolor);
+    color: var(--fgcolor);
 }
 
 #searchform > * {
     display: inline-block;
     padding: 0.5em;
-    border: 1px solid #CCC;
+    border: 1px solid var(--input-faded-border-color);
     width: 100%;
 }
 #searchform .flex-grid {
@@ -24,12 +64,12 @@ body {
     flex: 1;
     min-width: 5ch;
     padding: 0.5em;
-    border: 1px solid #CCC;
+    border: 1px solid var(--input-faded-border-color);
 }
 #searchform label:hover,
 #searchform input:hover,
 #searchform select:hover {
-    background-color: #EEE;
+    background-color: var(--input-hover-bgcolor);
 }
 #search-button {
     flex: 2;
@@ -46,7 +86,7 @@ body {
     right: 0;
     bottom: 2.5em;
     padding: 1em;
-    background: white;
+    background: var(--bgcolor); /* instead of transparent */
     overflow: auto;
 
     display: none;
@@ -76,12 +116,15 @@ body {
     flex: 1;
 }
 #editform #editform\.sessionFalseExpired:checked + span {
-    color: red;
+    color: var(--warning-fgcolor);
 }
 
+fieldset {
+    border-color: var(--box-border-color);
+}
 /* custom fieldset because flexbox is not supported in Chrome - https://crbug.com/375693 */
 .flexible-fieldset {
-    border: 1px solid;
+    border: 1px solid var(--box-border-color);
     padding: 1em;
 }
 .flexible-fieldset > legend {
@@ -90,7 +133,7 @@ body {
     margin-top: -1em; /* undo padding from flexible-fieldset */
     transform: translateY(-50%); /* vertically center on the border */
     padding: 0 1ch;
-    background: white;
+    background: var(--bgcolor); /* instead of transparent, to avoid fieldset border through it */
 }
 .stretched-textarea-container {
     display: flex;
@@ -131,10 +174,10 @@ body {
     height: -moz-fit-content;
     height: fit-content;
     margin: auto;
-    border: solid;
+    border: solid var(--box-border-color);
     padding: 1em;
-    background: white;
-    color: black;
+    background: var(--bgcolor);
+    color: var(--fgcolor);
 }
 #whitelist-unlock-yes,
 #whitelist-unlock-confirm {
@@ -149,7 +192,7 @@ body {
 }
 #whitelist-lock-again {
     /* TODO: Draw attention. */
-    color: blue;
+    color: var(--button-emphasis-fgcolor);
     font-weight: bold;
 }
 
@@ -209,10 +252,10 @@ table.no-results #show-more-results-row {
 }
 
 tbody tr {
-    border-top: 1px solid #DDD;
+    border-top: 1px solid var(--row-soft-border-color);
 }
 tbody tr:hover {
-    outline: 1px solid orange;
+    outline: 1px solid var(--row-hover-border-color);
 }
 .cell-content {
     box-sizing: content-box;
@@ -228,7 +271,7 @@ tbody tr:hover {
 }
 th:nth-child(even),
 td:nth-child(even) {
-    background-color: #EEE;
+    background-color: var(--column-even-bgcolor);
 }
 .cookie-removed td {
     opacity: 0.4;
@@ -238,10 +281,10 @@ td:nth-child(even) {
 }
 .highlighted,
 .highlighted td {
-    background-color: #FFA;
+    background-color: var(--column-highlight-odd-bgcolor);
 }
 .highlighted td:nth-child(even) {
-    background-color: #FF6;
+    background-color: var(--column-highlight-even-bgcolor);
 }
 .action-buttons {
     text-align: center;
@@ -251,7 +294,7 @@ td:nth-child(even) {
      * Two buttons should fit in this space, so 1.5em per button.
      * One line height is 1.2em, so we have 0.3em left for padding + border. */
     padding: 0.15em 1ch;
-    border: 1px outset black;
+    border: 1px outset var(--button-action-border-color);
     /* for "Restore" (or "Edit"). */
     max-width: 8ch;
 }
@@ -273,10 +316,10 @@ td:nth-child(even) {
     top: 0;
     left: 0;
     transform-origin: 0;
-    border: 1px solid black;
+    border: 1px solid var(--box-border-color);
     padding: 4px;
     display: inline-block;
-    background: white;
+    background: var(--bgcolor);
     text-align: center;
 }
 #multi-selection-tool > button:not([hidden]) {
@@ -297,11 +340,11 @@ td:nth-child(even) {
     bottom: 0;
     left: 0;
     right: 0;
-    background: white;
+    background: var(--bgcolor);
     background-clip: content-box;
     border: 0 none;
     border-top: 0.5em solid;
-    border-image: linear-gradient(to bottom, transparent, white) 50;
+    border-image: linear-gradient(to bottom, transparent, var(--bgcolor)) 50;
 
     display: flex;
 }
