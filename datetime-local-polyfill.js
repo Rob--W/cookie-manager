@@ -3,10 +3,15 @@
 // Designed to be compatible with Chrome and Firefox, Desktop and mobile.
 (function() {
     'use strict';
-    if (/Mobile|Chrome\//.test(navigator.userAgent)) {
+    function hasNativeDatepicker() {
         // Chrome supports input[type=datetime-local] since way before version 30.
         // Firefox for Android supports it too, at least in 53, but probably already
         // way back to 40 and possibly earlier.
+        var input = document.createElement('input');
+        input.type = 'datetime-local';
+        return input.type === 'datetime-local';
+    }
+    if (hasNativeDatepicker()) {
         return;
     }
 
