@@ -154,4 +154,4 @@ The Cookie manager cannot be opened upon start-up. Tap on the icon in the
 address bar to open the cookie manager. Due to a bug in Firefox this icon is
 very small, unfortunately.
 
-[Screenshot](https://addons.cdn.mozilla.net/user-media/previews/full/183/183935.png)
+[Screenshot](screenshots/open-cookie-manager-on-fennec.png)
