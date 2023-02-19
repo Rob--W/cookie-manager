@@ -1259,7 +1259,7 @@ document.getElementById('importform').onsubmit = function(event) {
         document.getElementById('import-cancel').disabled = true;
 
         var deleteSameSite = cookies.some(c => 'sameSite' in c) && !chrome.cookies.SameSiteStatus;
-        var convertSameSiteUnspecified = !deleteSameSite && chrome.cookies.SameSiteStatus.UNSPECIFIED;
+        var convertSameSiteUnspecified = !deleteSameSite && !chrome.cookies.SameSiteStatus.UNSPECIFIED;
         var deleteFirstPartyDomain = cookies.some(c => 'firstPartyDomain' in c) && !checkFirstPartyDomainSupport();
         var deletePartitionKey = cookies.some(c => 'partitionKey' in c) && !checkPartitionKeySupport();
 
