@@ -917,7 +917,7 @@ var CookieExporter = {
         sameSite: ['string', 'undefined'],
         // Firefox 59+:
         firstPartyDomain: ['string', 'undefined'],
-        // Firefox 94+:
+        // Firefox 94+, Chrome 119+:
         partitionKey: ['object', 'undefined'],
     },
     get KEYS() {
