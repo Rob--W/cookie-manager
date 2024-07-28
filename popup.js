@@ -10,7 +10,15 @@ document.getElementById('open-cm-any').onclick = openAnyCookieManager;
 document.getElementById('open-cm-tab-top').onclick = openTopTabCookieManager;
 document.getElementById('open-cm-tab-top').disabled = true;
 
-chrome.runtime.sendMessage('getActiveTab', function(tab) {
+function getActiveTab(callback) {
+    chrome.tabs.query({
+        lastFocusedWindow: true,
+        active: true,
+    }, function(tabs) {
+        callback(tabs && tabs[0]);
+    });
+}
+getActiveTab(function(tab) {
     if (tab && tab.url && tab.url.startsWith('http')) {
         activeTab = tab;
         document.getElementById('open-cm-tab-top').disabled = false;
@@ -89,7 +97,6 @@ function openOrActivateCookieManager_(currentTab, query) {
         chrome.tabs.create(createProperties);
     }).then(function() {
         window.close();
-        chrome.runtime.sendMessage('closePopup');
     });
 }
 

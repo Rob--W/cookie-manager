@@ -26,6 +26,7 @@
             "48": "icons/48.png",
             "96": "icons/96.png"
         },
+        "default_popup": "popup.html",
         "default_title": "Open Cookie Manager"
     }
 }

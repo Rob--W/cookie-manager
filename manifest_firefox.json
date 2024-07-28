@@ -8,9 +8,6 @@
         "contextualIdentities",
         "cookies",
         "storage",
-        "webNavigation",
-        "webRequest",
-        "webRequestBlocking",
         "file://*/*",
         "*://*/*"
     ],
@@ -19,6 +16,7 @@
         "open_in_tab": true
     },
     "background": {
+        "persistent": false,
         "scripts": ["background.js"]
     },
     "icons": {
@@ -26,17 +24,18 @@
         "96": "icons/96.png"
     },
     "browser_action": {
-        "default_title": "Open Cookie Manager"
-    },
-    "page_action": {
         "default_icon": {
             "48": "icons/48.png",
             "96": "icons/96.png"
-        }
+        },
+        "default_popup": "popup.html",
+        "default_title": "Open Cookie Manager"
     },
-    "applications": {
+    "browser_specific_settings": {
         "gecko": {
+            "strict_min_version": "69.0",
             "id": "cookie-manager@robwu.nl"
-        }
+        },
+        "gecko_android": {}
     }
 }
