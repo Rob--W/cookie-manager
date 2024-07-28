@@ -945,7 +945,11 @@ var CookieExporter = {
                 console.warn('serialize: Invalid cookie at index ' + i + ': ' + validationMessage);
             }
         });
-        var serializedCookies = JSON.stringify(cookies, CookieExporter.KEYS, 1);
+        // Note: exported cookie may include unrecognized properties.
+        // If this happens, the extension should be updated to support the new fields.
+        // The alternative is to drop unrecognized keys, but the downside to that is that
+        // the keys may be relevant to describing the cookie accurately.
+        var serializedCookies = JSON.stringify(cookies, null, 1);
         var exported = {
             // Include extension and browser versions to allow old data to be migrated in the
             // deserialize method, if needed in the future.
