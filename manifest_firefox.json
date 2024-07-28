@@ -11,6 +11,7 @@
         "webNavigation",
         "webRequest",
         "webRequestBlocking",
+        "file://*/*",
         "*://*/*"
     ],
     "options_ui": {

@@ -2826,6 +2826,14 @@ function cookieToUrl(cookie) {
     url += '://';
     if (cookie.domain.charAt(0) === '.') {
         url += cookie.domain.slice(1);
+    } else if (cookie.domain === '') {
+        // http(s) cookies must have a domain. The only supported non-http scheme is file:
+        // https://searchfox.org/mozilla-central/rev/2c61e59a48af27c100c2dd2756b5efad573dbc71/dom/base/Document.h#2496-2508
+        // ... and that always has a plain string as domain.
+        // NOTE: Even though we have the permissions etc to set the cookie, we cannot edit them yet due to
+        // https://bugzilla.mozilla.org/show_bug.cgi?id=1473412#c12
+        // Note that Chrome does not support cookies on file:-URLs.
+        url = 'file://';
     } else {
         url += cookie.domain;
     }
