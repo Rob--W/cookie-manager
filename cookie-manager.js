@@ -1389,9 +1389,7 @@ function checkPartitionKeySupport() {
         return gPartitionKeySupported;
     }
     try {
-        // firstPartyDomain is only supported in Firefox 94+.
-        // It may be supported in a version of Chrome, see
-        // https://github.com/WICG/CHIPS/issues/6#issuecomment-932423839
+        // firstPartyDomain is only supported in Firefox 94+ and Chrome 119+.
         // TODO: If partitionKey ever supports other properties, then we need to
         // update cookieToPartitionKeyString / partitionKeyFromString to account
         // for that (and convert / ignore properties if applicable).
@@ -1399,6 +1397,9 @@ function checkPartitionKeySupport() {
             name: 'dummyName',
             partitionKey: { topLevelSite: "" },
             url: 'about:blank',
+        }, () => {
+            // "No host permissions for cookies at url: "about:blank"
+            void chrome.runtime.lastError;
         });
         gPartitionKeySupported = true;
     } catch (e) {
