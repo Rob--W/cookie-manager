@@ -652,6 +652,18 @@ document.getElementById('editform').onsubmit = function(event) {
     cookie.httpOnly = document.getElementById('editform.httpOnly').checked;
     if (!document.getElementById('editform.sameSiteBox').hidden) {
         cookie.sameSite = document.getElementById('editform.sameSite').value;
+        if (
+            cookie.sameSite === 'unspecified' &&
+            // Note: chrome.cookies.SameSiteStatus is non-void because
+            // otherwise the sameSiteBox would have been hidden.
+            !chrome.cookies.SameSiteStatus.UNSPECIFIED &&
+            chrome.cookies.SameSiteStatus.NO_RESTRICTION
+        ) {
+            // Firefox doesn't support SameSite=unspecified in the cookies API.
+            // https://bugzilla.mozilla.org/show_bug.cgi?id=1550032
+            // It defaults to no_restriction.
+            cookie.sameSite = "no_restriction";
+        }
     }
     if (document.getElementById('editform.sessionFalse').checked) {
         cookie.expirationDate = dateToExpiryCompatibleTimestamp(document.getElementById('editform.expiry'));
