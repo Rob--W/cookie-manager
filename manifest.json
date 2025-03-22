@@ -2,11 +2,13 @@
     "name": "Cookie Manager",
     "description": "An efficient cookie manager. View, edit, delete and search for cookies. Designed for privacy aware users. Automatically opens the Cookie Manager upon extension startup (this can be configured via the UI).",
     "version": "1.8",
-    "manifest_version": 2,
+    "manifest_version": 3,
     "permissions": [
         "activeTab",
         "cookies",
-        "storage",
+        "storage"
+    ],
+    "host_permissions": [
         "*://*/*"
     ],
     "options_ui": {
@@ -14,19 +16,19 @@
         "open_in_tab": true
     },
     "background": {
-        "persistent": false,
-        "scripts": ["background.js"]
+        "service_worker": "background.js"
     },
     "icons": {
         "48": "icons/48.png",
         "96": "icons/96.png"
     },
-    "browser_action": {
+    "action": {
         "default_icon": {
             "48": "icons/48.png",
             "96": "icons/96.png"
         },
         "default_popup": "popup.html",
         "default_title": "Open Cookie Manager"
-    }
+    },
+    "minimum_chrome_version": "88"
 }
