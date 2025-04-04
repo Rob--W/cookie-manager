@@ -916,21 +916,27 @@ var CookieExporter = {
         name: ['string'],
         value: ['string'],
         domain: ['string'],
-        hostOnly: ['boolean'],
         path: ['string'],
-        secure: ['boolean'],
-        httpOnly: ['boolean'],
+        hostOnly: ['boolean', 'undefined'],
+        httpOnly: ['boolean', 'undefined'],
+        secure: ['boolean', 'undefined'],
         // Optional if expirationDate is set:
         session: ['boolean', 'undefined'],
         // Optional if session is true:
         expirationDate: ['number', 'undefined'],
-        storeId: ['string'],
+        storeId: ['string', 'undefined'],
         // Chrome 51+, Firefox 63+:
         sameSite: ['string', 'undefined'],
         // Firefox 59+:
         firstPartyDomain: ['string', 'undefined'],
         // Firefox 94+, Chrome 119+:
         partitionKey: ['object', 'undefined'],
+    },
+    KEY_DEFAULT_VALUES: {
+        hostOnly: false,
+        httpOnly: false,
+        secure: false,
+        storeId: 'firefox-default'
     },
     get KEYS() {
         var KEYS = Object.keys(CookieExporter.KEY_TYPES);
@@ -944,7 +950,12 @@ var CookieExporter = {
     // returns true if this exporter might recognize the format.
     probe(text) {
         // Does it look like a JSON-serialized format?
-        return /^\s*\{[\s\S]*\}\s*$/.test(text);
+        try {
+            JSON.parse(text)
+            return true
+        } catch (e) {
+            return false
+        }
     },
     // cookies is a list of chrome.cookie.Cookie objects.
     serialize(cookies) {
@@ -978,10 +989,12 @@ var CookieExporter = {
         } catch (e) {
             throw new Error('Invalid JSON: ' + e.message.replace(/^JSON\.parse: /, ''));
         }
-        var cookies = imported.cookies;
-        if (!Array.isArray(cookies)) {
-            throw new Error('Invalid data: "cookies" array not found!');
-        }
+        var cookies;
+        if (Array.isArray(imported.cookies))
+            cookies = imported.cookies
+        else if (Array.isArray(imported))
+            cookies = imported;
+        else throw new Error('Invalid data: "cookies" array not found!');
         for (var i = 0; i < cookies.length; ++i) {
             var cookie = cookies[i];
             var validationMessage = CookieExporter.validateCookieObject(cookie);
@@ -996,13 +1009,49 @@ var CookieExporter = {
         return cookies;
     },
 
+    // correct cookie expires for firefox, chrome, cookieJar, puppeteer
+    correctCookieExpires (cookie) {
+        if (cookie.session === true)
+            return
+        if (typeof cookie.expires === 'string') {
+            try {
+                cookie.expirationDate = new Date(cookie.expires).getTime()
+                return
+            } catch (e) {}
+        }
+        if (typeof cookie.expirationDate === 'string') {
+            // string format, convert it to timestamp
+            try {
+                cookie.expirationDate = new Date(cookie.expirationDate).getTime()
+            } catch (e) {
+                // wrong format
+                return 'cookie expirationDate has an invalid value'
+            }
+        } else if (typeof cookie.expirationDate === 'number') {
+            try {
+                if (new Date(cookie.expirationDate).getFullYear() < 1990) {
+                    cookie.expirationDate *= 1e3
+                }
+            } catch (e) {
+                // negative ?
+                return 'cookie expirationDate has an invalid value'
+            }
+        } else {
+            return 'cookie expirationDate has an invalid type'
+        }
+    },
     // Do a basic validation of the cookie.
     validateCookieObject(cookie) {
-        if (typeof cookie !== 'object')
-            return 'cookie has an invalid type. Expected object, got ' + typeof cookie;
-        if (cookie === null)
-            return 'cookie has an invalid type. Expected object, got null';
+        if (cookie == null || typeof cookie !== 'object')
+            return 'cookie has an invalid type. Expected object';
 
+        // cookieJar fix
+        if (cookie.name == null && typeof cookie.key === 'string')
+            cookie.name = cookie.key
+        // matching chrome & firefox cookies expires format
+        var checkCookieExpires = this.correctCookieExpires(cookie)
+        if (checkCookieExpires != null)
+            return checkCookieExpires
         function typeofProp(key) {
             return key in cookie ? typeof cookie[key] : 'undefined';
         }
@@ -1010,8 +1059,12 @@ var CookieExporter = {
         for (var key of CookieExporter.KEYS) {
             var allowedTypes = CookieExporter.KEY_TYPES[key];
             if (!allowedTypes.includes(typeofProp(key))) {
-                return 'cookie.' + key + ' has an invalid type. Expected ' + allowedTypes +
-                    ', got ' + typeofProp(key);
+                if (CookieExporter.KEY_DEFAULT_VALUES[key]) {
+                    cookie[key] = CookieExporter.KEY_DEFAULT_VALUES[key]
+                } else {
+                    return 'cookie.' + key + ' has an invalid type. Expected ' + allowedTypes +
+                      ', got ' + typeofProp(key);
+                }
             }
         }
         if ('session' in cookie && cookie.session) {
@@ -1019,8 +1072,13 @@ var CookieExporter = {
                 return 'cookie.expirationDate cannot be set if cookie.session is true.';
             }
         } else if (typeofProp('expirationDate') !== 'number') {
-            return 'cookie.expirationDate has an invalid type. Expected number , got ' +
-                typeofProp(key);
+            try {
+                // Date string ?
+                cookie.expirationDate = new Date(cookie.expirationDate).getTime()
+            } catch (e) {
+                return 'cookie.expirationDate has an invalid type. Expected number , got ' +
+                  typeofProp(key);
+            }
         }
         // This is a very shallow validator. If the format is really that terrible, then
         // cookies.set will reject with an error.
